@@ -39,3 +39,18 @@ func TestSanitizeName(t *testing.T) {
     }
 }
 
+func TestNormalizeTransitionName(t *testing.T) {
+    cases := map[string]string{
+        "":       "Fade",
+        "fade":   "Fade",
+        "FADE":   "Fade",
+        " cut ":  "Cut",
+        "CuT":    "Cut",
+        "other":  "Fade",
+    }
+    for in, want := range cases {
+        if got := normalizeTransitionName(in); got != want {
+            t.Fatalf("normalizeTransitionName(%q)=%q; want %q", in, got, want)
+        }
+    }
+}

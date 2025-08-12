@@ -10,6 +10,7 @@ import (
     "github.com/andreykaipov/goobs"
     "github.com/andreykaipov/goobs/api/requests/inputs"
     "github.com/andreykaipov/goobs/api/requests/scenes"
+    "github.com/andreykaipov/goobs/api/requests/transitions"
 )
 
 type ImportOptions struct {
@@ -18,9 +19,56 @@ type ImportOptions struct {
     Dir      string
     Loop     bool
     Activate bool
+    Transition string // "fade" or "cut"
+    Debug      bool
+}
+
+// normalizeTransitionName は CLI から渡されるトランジション指定を
+// OBS の既定トランジション名に正規化する。
+// 現状は "fade"→"Fade"、"cut"→"Cut"。既定外はすべて "Fade"。
+func normalizeTransitionName(opt string) string {
+    s := strings.ToLower(strings.TrimSpace(opt))
+    switch s {
+    case "cut":
+        return "Cut"
+    default:
+        return "Fade"
+    }
+}
+
+// resolveTransitionName は OBS から取得したトランジション一覧を参照し、
+// 希望する種類（fade/cut）に一致する実際の名称（ローカライズ含む）を選ぶ。
+// 見つからない場合は既定の英語名にフォールバックする。
+func resolveTransitionName(client *goobs.Client, want string) string {
+    want = strings.ToLower(strings.TrimSpace(want))
+    // 望む種類のキーワード
+    key := "fade"
+    if want == "cut" {
+        key = "cut"
+    }
+
+    // 一覧取得（失敗したらフォールバック）
+    lst, err := client.Transitions.GetSceneTransitionList(nil)
+    if err == nil && lst != nil {
+        for _, tr := range lst.Transitions {
+            kind := strings.ToLower(tr.TransitionKind)
+            if strings.Contains(kind, key) {
+                if name := strings.TrimSpace(tr.TransitionName); name != "" {
+                    return name
+                }
+            }
+        }
+    }
+    // フォールバック（英語既定名）
+    return normalizeTransitionName(want)
 }
 
 func ImportScenes(opts ImportOptions) error {
+    debugf := func(format string, args ...any) {
+        if opts.Debug {
+            log.Printf("[DEBUG] "+format, args...)
+        }
+    }
     // 接続
     addrVal := NormalizeObsAddr(opts.Addr)
     client, err := goobs.New(addrVal, goobs.WithPassword(opts.Password))
@@ -49,10 +97,12 @@ func ImportScenes(opts ImportOptions) error {
     count := 0
     for _, e := range entries {
         if e.IsDir() {
+            debugf("サブディレクトリをスキップ: %s", e.Name())
             continue
         }
         ext := strings.ToLower(filepath.Ext(e.Name()))
         if !isVideoExt(ext) {
+            debugf("動画拡張子ではないためスキップ: %s", e.Name())
             continue
         }
         full := filepath.Join(opts.Dir, e.Name())
@@ -69,6 +119,7 @@ func ImportScenes(opts ImportOptions) error {
             SceneName: &sceneName,
         }); err != nil {
             log.Printf("シーン作成失敗 (%s): %v", sceneName, err)
+            debugf("CreateScene params: sceneName=%s", sceneName)
             continue
         }
         existing[sceneName] = struct{}{}
@@ -93,6 +144,7 @@ func ImportScenes(opts ImportOptions) error {
         })
         if err != nil {
             log.Printf("Media Source 追加失敗 (%s): %v", sceneName, err)
+            debugf("CreateInput params: scene=%s, name=%s, kind=%s, file=%s, loop=%v", sceneName, inputName, inputKind, full, opts.Loop)
             continue
         }
 
@@ -103,11 +155,30 @@ func ImportScenes(opts ImportOptions) error {
 
     // 最後に作成したシーンをアクティブに
     if opts.Activate && lastScene != "" {
+        // トランジション設定（デフォルト: Fade）。ローカライズ環境でも動くよう
+        // 現在のトランジション一覧から目的の種類に該当する名称を探す。
+        trName := resolveTransitionName(client, opts.Transition)
+        debugf("トランジション解決: want=%q resolved=%q", opts.Transition, trName)
+
+        // 可能ならトランジションを設定（失敗しても致命ではない）
+        if _, err := client.Transitions.SetCurrentSceneTransition(
+            (&transitions.SetCurrentSceneTransitionParams{}).WithTransitionName(trName),
+        ); err != nil {
+            log.Printf("トランジション設定に失敗しました (%s): %v", trName, err)
+            if lst, e := client.Transitions.GetSceneTransitionList(nil); e == nil {
+                for _, tr := range lst.Transitions {
+                    debugf("候補: name=%q kind=%q fixed=%v configurable=%v", tr.TransitionName, tr.TransitionKind, tr.TransitionFixed, tr.TransitionConfigurable)
+                }
+            } else {
+                debugf("トランジション一覧取得失敗: %v", e)
+            }
+        }
         _, err = client.Scenes.SetCurrentProgramScene(&scenes.SetCurrentProgramSceneParams{
             SceneName: &lastScene,
         })
         if err != nil {
             log.Printf("シーン切替に失敗しました: %v", err)
+            debugf("SetCurrentProgramScene params: sceneName=%s", lastScene)
         } else {
             log.Printf("アクティブ化: %s", lastScene)
         }
@@ -143,4 +214,3 @@ func sanitizeName(s string) string {
     }
     return s
 }
-

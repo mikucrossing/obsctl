@@ -15,7 +15,7 @@ go build -o obsctl ./cmd/obsctl
 ./obsctl trigger -addrs 127.0.0.1:4455,127.0.0.1:4456 -password ****** -scene SceneA
 
 # ディレクトリからシーン作成
-./obsctl import -addr 127.0.0.1:4455 -password ****** -dir ./videos -loop
+./obsctl import -addr 127.0.0.1:4455 -password ****** -dir ./videos -loop -activate -transition fade -debug
 ```
 
 ## コマンド概要

@@ -40,6 +40,7 @@ make test    # go test ./... を実行
 - `WaitUntil`: 未来/過去時刻での待機挙動（過度なフレーク回避の閾値あり）
 - `isVideoExt` / `sanitizeName`: 拡張子の判定とシーン名整形
 - `toMediaActionConst` / `withTimeout`: メディア操作の定数化とタイムアウトラッパ
+ - `normalizeTransitionName`: `-transition` フラグ値の正規化（`fade`/`cut` → OBS 既定名）
 
 いずれもネットワーク依存なしで実行できます。
 
@@ -51,4 +52,3 @@ make test    # go test ./... を実行
 ## ヒント
 - モジュールの取得が必要な初回だけネットワークが発生します。制限環境ではローカルキャッシュ（`GOMODCACHE`）をリポジトリ配下に向けると便利です。
 - テストは短時間で終わるよう設計しています。もしフレークが発生する場合は `WaitUntil` の閾値（テスト内の許容上限）を環境に合わせて調整してください。
-
