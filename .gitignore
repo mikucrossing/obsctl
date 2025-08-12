@@ -39,7 +39,9 @@ go.work
 go.work.sum
 
 # Binaries
-obsctl
+# ルートのビルド成果物のみ無視（同名ディレクトリは対象外）
+/obsctl
+/obsctl.exe
 
 # Dependencies (if vendored locally)
 vendor/
