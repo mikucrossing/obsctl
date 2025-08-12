@@ -20,6 +20,7 @@ type ImportOptions struct {
     Loop     bool
     Activate bool
     Transition string // "fade" or "cut"
+    Monitoring string // "off" | "monitor-only" | "monitor-and-output"
     Debug      bool
 }
 
@@ -61,6 +62,23 @@ func resolveTransitionName(client *goobs.Client, want string) string {
     }
     // フォールバック（英語既定名）
     return normalizeTransitionName(want)
+}
+
+// normalizeMonitoringType は CLI の指定を obs-websocket のモニタリング種別定数へ変換する。
+// 返り値は obs-websocket v5 の想定文字列:
+//   - "OBS_MONITORING_TYPE_NONE"
+//   - "OBS_MONITORING_TYPE_MONITOR_ONLY"
+//   - "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT"
+func normalizeMonitoringType(opt string) string {
+    s := strings.ToLower(strings.TrimSpace(opt))
+    switch s {
+    case "monitor-only", "monitor_only":
+        return "OBS_MONITORING_TYPE_MONITOR_ONLY"
+    case "monitor-and-output", "monitor_and_output":
+        return "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT"
+    default: // "off", "none", 未指定 は NONE
+        return "OBS_MONITORING_TYPE_NONE"
+    }
 }
 
 func ImportScenes(opts ImportOptions) error {
@@ -146,6 +164,18 @@ func ImportScenes(opts ImportOptions) error {
             log.Printf("Media Source 追加失敗 (%s): %v", sceneName, err)
             debugf("CreateInput params: scene=%s, name=%s, kind=%s, file=%s, loop=%v", sceneName, inputName, inputKind, full, opts.Loop)
             continue
+        }
+
+        // 音声モニタリング設定（既定: off）。失敗しても致命ではない。
+        monType := normalizeMonitoringType(opts.Monitoring)
+        if _, err := client.Inputs.SetInputAudioMonitorType(
+            inputs.NewSetInputAudioMonitorTypeParams().
+                WithInputName(inputName).
+                WithMonitorType(monType),
+        ); err != nil {
+            log.Printf("音声モニタリング設定に失敗しました (%s -> %s): %v", inputName, monType, err)
+        } else {
+            debugf("音声モニタリング設定: input=%q type=%q", inputName, monType)
         }
 
         log.Printf("作成完了: シーン「%s」 <- %s", sceneName, full)

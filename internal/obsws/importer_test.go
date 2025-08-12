@@ -54,3 +54,22 @@ func TestNormalizeTransitionName(t *testing.T) {
         }
     }
 }
+
+func TestNormalizeMonitoringType(t *testing.T) {
+    cases := map[string]string{
+        "":                         "OBS_MONITORING_TYPE_NONE",
+        "off":                      "OBS_MONITORING_TYPE_NONE",
+        "none":                     "OBS_MONITORING_TYPE_NONE",
+        "monitor-only":             "OBS_MONITORING_TYPE_MONITOR_ONLY",
+        "monitor_only":             "OBS_MONITORING_TYPE_MONITOR_ONLY",
+        "monitor-and-output":       "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT",
+        "monitor_and_output":       "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT",
+        " MONITOR-AND-OUTPUT ":     "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT",
+        "unknown":                  "OBS_MONITORING_TYPE_NONE",
+    }
+    for in, want := range cases {
+        if got := normalizeMonitoringType(in); got != want {
+            t.Fatalf("normalizeMonitoringType(%q)=%q; want %q", in, got, want)
+        }
+    }
+}

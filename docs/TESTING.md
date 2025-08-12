@@ -40,7 +40,8 @@ make test    # go test ./... を実行
 - `WaitUntil`: 未来/過去時刻での待機挙動（過度なフレーク回避の閾値あり）
 - `isVideoExt` / `sanitizeName`: 拡張子の判定とシーン名整形
 - `toMediaActionConst` / `withTimeout`: メディア操作の定数化とタイムアウトラッパ
- - `normalizeTransitionName`: `-transition` フラグ値の正規化（`fade`/`cut` → OBS 既定名）
+- `normalizeTransitionName`: `-transition` フラグ値の正規化（`fade`/`cut` → OBS 既定名）
+- `normalizeMonitoringType`: `-monitoring` フラグ値の正規化（`off`/`monitor-only`/`monitor-and-output` → OBS 既定定数）
 
 いずれもネットワーク依存なしで実行できます。
 

@@ -14,8 +14,8 @@ go build -o obsctl ./cmd/obsctl
 # 同時シーン切替
 ./obsctl trigger -addrs 127.0.0.1:4455,127.0.0.1:4456 -password ****** -scene SceneA
 
-# ディレクトリからシーン作成
-./obsctl import -addr 127.0.0.1:4455 -password ****** -dir ./videos -loop -activate -transition fade -debug
+# ディレクトリからシーン作成（トランジション指定と音声モニタリング設定）
+./obsctl import -addr 127.0.0.1:4455 -password ****** -dir ./videos -loop -activate -transition fade -monitoring monitor-and-output -debug
 ```
 
 ## コマンド概要

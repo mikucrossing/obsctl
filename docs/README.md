@@ -67,7 +67,8 @@ obsctl import \
   -dir ./videos \
   -loop \
   -activate \
-  -transition fade
+  -transition fade \
+  -monitoring monitor-and-output
 ```
 
 主なオプション:
@@ -78,6 +79,7 @@ obsctl import \
 - `-loop`: Media Source をループ再生にする。
 - `-activate`: 最後に作成したシーンをプログラム終了時にアクティブ化する。
 - `-transition`: シーントランジションを選択（`fade` | `cut`、デフォルト `fade`）。`-activate` 指定時に、切替直前に OBS の現在トランジションを設定します。ローカライズ環境でも種類（fade/cut）で自動検出して適切な名称を選びます。
+- `-monitoring`: 生成する各 Media Source の音声モニタリングを設定（`off` | `monitor-only` | `monitor-and-output`、デフォルト `off`）。
 - `-debug`: デバッグログを有効化。トランジション検出結果や失敗時の候補一覧、CreateScene/CreateInput/Scene切替のパラメータなど詳細情報を出力します。
 
 使用例:
@@ -88,6 +90,9 @@ obsctl import -addr 127.0.0.1:4455 -dir ./videos -activate
 
 # カットで切替
 obsctl import -addr 127.0.0.1:4455 -dir ./videos -activate -transition cut
+
+# 音声モニタリングをモニター+出力に設定
+obsctl import -addr 127.0.0.1:4455 -dir ./videos -monitoring monitor-and-output
 
 # 詳細なデバッグログを出す
 obsctl import -addr 127.0.0.1:4455 -dir ./videos -activate -transition cut -debug
