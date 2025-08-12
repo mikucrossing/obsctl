@@ -1,0 +1,123 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Run tests
+        run: go test ./...
+      - name: Prepare
+        run: |
+          mkdir -p dist
+          VERSION=${GITHUB_REF_NAME:-dev}
+          VERSION=${VERSION#v}
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "COMMIT=$COMMIT" >> $GITHUB_ENV
+          echo "DATE=$DATE" >> $GITHUB_ENV
+          echo "LDFLAGS=-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$DATE" >> $GITHUB_ENV
+      - name: Build linux amd64
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_linux_amd64 ./cmd/obsctl
+      - name: Build linux arm64
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_linux_arm64 ./cmd/obsctl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            dist/obsctl_linux_amd64
+            dist/obsctl_linux_arm64
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Prepare
+        shell: bash
+        run: |
+          mkdir -p dist
+          VERSION=${GITHUB_REF_NAME:-dev}
+          VERSION=${VERSION#v}
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "COMMIT=$COMMIT" >> $GITHUB_ENV
+          echo "DATE=$DATE" >> $GITHUB_ENV
+          echo "LDFLAGS=-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$DATE" >> $GITHUB_ENV
+      - name: Build windows amd64
+        shell: bash
+        run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_windows_amd64.exe ./cmd/obsctl
+      - name: Build windows arm64
+        shell: bash
+        run: CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_windows_arm64.exe ./cmd/obsctl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/obsctl_windows_amd64.exe
+            dist/obsctl_windows_arm64.exe
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Prepare
+        run: |
+          mkdir -p dist
+          VERSION=${GITHUB_REF_NAME:-dev}
+          VERSION=${VERSION#v}
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "COMMIT=$COMMIT" >> $GITHUB_ENV
+          echo "DATE=$DATE" >> $GITHUB_ENV
+          echo "LDFLAGS=-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$DATE" >> $GITHUB_ENV
+      - name: Build darwin amd64
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_darwin_amd64 ./cmd/obsctl
+      - name: Build darwin arm64
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_darwin_arm64 ./cmd/obsctl
+      - name: Create universal binary
+        run: lipo -create -output dist/obsctl_darwin_universal dist/obsctl_darwin_amd64 dist/obsctl_darwin_arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: |
+            dist/obsctl_darwin_amd64
+            dist/obsctl_darwin_arm64
+            dist/obsctl_darwin_universal
+
+  release:
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: List artifacts
+        run: ls -R dist
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**

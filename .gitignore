@@ -1,0 +1,51 @@
+# OS / Editor
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+*.swo
+.vscode/
+.idea/
+*.iml
+
+# Go: build artifacts and caches
+.gocache/
+.gomodcache/
+bin/
+build/
+dist/
+release/
+coverage/
+*.cover
+*.coverprofile
+*.cover.out
+coverage.txt
+profile.out
+*.prof
+*.pprof
+*.test
+*.out
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Local workspace files
+go.work
+go.work.sum
+
+# Binaries
+obsctl
+
+# Dependencies (if vendored locally)
+vendor/
+
+# Logs / Env
+*.log
+.env
+.env.*
+!.env.example
