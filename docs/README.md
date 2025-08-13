@@ -27,6 +27,15 @@ obsctl <command> [options]
 - `import`: ディレクトリからシーン+Media Source を生成
 - `version`: バージョン情報を表示
 
++### MIDI 連携
+
+`obsctl midi` サブコマンドで、MIDI 入力イベントに応じてシーン切替を行う機能を提供しています。
+
+- 使い方の設計/仕様は `docs/MIDI_SCENE_SWITCH.md` を参照
+- シーン→NoteのJSON雛形は `obsctl midi gen-json` で生成可能（例は `docs/midi.example.json`）。
+- デフォルトビルドではネイティブMIDIは無効（スタブ）。ネイティブ入力を使うにはビルドタグ `midi_native` を有効にしてビルドしてください。
+  - 例: `GOCACHE=$(pwd)/.gocache GOMODCACHE=$(pwd)/.gomodcache go build -tags midi_native -o obsctl ./cmd/obsctl`
+
 ## trigger コマンド
 
 指定した時刻（または遅延）に、複数の OBS へ同時にシーン切り替えを行います。

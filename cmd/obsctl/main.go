@@ -30,6 +30,8 @@ func main() {
         runTrigger(os.Args[2:])
     case "import":
         runImport(os.Args[2:])
+    case "midi":
+        runMidi(os.Args[2:])
     case "version":
         printVersion()
     case "help", "-h", "--help":
@@ -39,6 +41,8 @@ func main() {
                 triggerUsage()
             case "import":
                 importUsage()
+            case "midi":
+                midiUsage()
             default:
                 usage()
             }
@@ -63,6 +67,7 @@ func usage() {
     fmt.Println("コマンド:")
     fmt.Println("  trigger   複数OBSへ同時発火（シーン切替/将来のメディア操作）")
     fmt.Println("  import    ディレクトリからシーン+Media Sourceを生成")
+    fmt.Println("  midi      MIDI入力を待機してシーン切替（試験的）")
     fmt.Println("  version   バージョン情報を表示")
     fmt.Println("")
     fmt.Println("ヘルプ:")
@@ -72,6 +77,7 @@ func usage() {
     fmt.Println("例:")
     fmt.Println("  obsctl trigger -addrs 127.0.0.1:4455,127.0.0.1:4456 -password ****** -scene SceneA -at 2025-08-12T01:30:00+09:00 -spinwin 2ms")
     fmt.Println("  obsctl import -addr 127.0.0.1:4455 -password ****** -dir ./videos -loop -activate")
+    fmt.Println("  obsctl midi -addrs 127.0.0.1:4455 -password ****** -device 'IAC Driver Bus 1'")
 }
 
 func printVersion() {
@@ -217,3 +223,22 @@ func importUsage() {
     fmt.Fprintln(os.Stderr, "  -debug     デバッグログ（詳細なエラー/検出情報）を出力する")
 }
 
+func midiUsage() {
+    fmt.Fprintln(os.Stderr, "Usage: obsctl midi [options] | ls-devices | gen-json [options]")
+    fmt.Fprintln(os.Stderr, "\n説明: MIDI 入力を監視し、イベントに応じて OBS のシーンを切り替えます（試験的）。")
+    fmt.Fprintln(os.Stderr, "\n主なコマンド:")
+    fmt.Fprintln(os.Stderr, "  ls-devices     利用可能な MIDI 入力デバイス一覧を表示")
+    fmt.Fprintln(os.Stderr, "  gen-json       OBSのシーン一覧から NoteOn マッピングJSONを生成し標準出力へ")
+    fmt.Fprintln(os.Stderr, "\n主なオプション:")
+    fmt.Fprintln(os.Stderr, "  -addrs         OBS のアドレスをカンマ区切り (host:port)")
+    fmt.Fprintln(os.Stderr, "  -password      パスワード（全接続共通）")
+    fmt.Fprintln(os.Stderr, "  -device        監視する MIDI 入力デバイス名")
+    fmt.Fprintln(os.Stderr, "  -channel       受け付ける MIDI チャネル (1-16、カンマ区切り)")
+    fmt.Fprintln(os.Stderr, "  -debounce      デバウンス間隔 (例: 30ms)")
+    fmt.Fprintln(os.Stderr, "  -ratelimit     レート制限の最短間隔 (例: 50ms)")
+    fmt.Fprintln(os.Stderr, "  -timeout       OBS リクエストのタイムアウト (例: 5s)")
+    fmt.Fprintln(os.Stderr, "  -map-note      ノート→シーンの対応（複数可）。例: 1:36=028_エンドロール（ch:note=scene）")
+    fmt.Fprintln(os.Stderr, "  -config        JSON設定ファイルパス（device/channel/debounce/rate_limit/mappings）")
+    fmt.Fprintln(os.Stderr, "  -debug         デバッグログを有効化")
+    fmt.Fprintln(os.Stderr, "\n注: ネイティブMIDI入出力はビルドタグ 'midi_native' が必要です。詳細は docs/MIDI_SCENE_SWITCH.md を参照。")
+}
