@@ -18,17 +18,31 @@
       --error: #f87171;
     }
     *{ box-sizing: border-box }
-    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
-    header { background: var(--panel2); padding: 12px 16px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
+    /* WebView を完全透過にし、ネイティブのぼかしを見せる */
+    html, body { background: rgba(0,0,0,0); }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; margin: 0; color: var(--text); }
+    /* 半透明レイヤにして背後(ネイティブ)の霜ガラスを活かす */
+    header {
+      background: rgba(17,24,39,0.50);
+      padding: 12px 16px 12px 76px; /* 左に余白: 交通信号ボタンの干渉を避ける */
+      position: sticky; top: 0; z-index: 10;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      /* Wails: この領域をドラッグ可能にする */
+      --wails-draggable: drag;
+      -webkit-user-select: none;
+      cursor: default;
+    }
+    /* クリック可能要素はドラッグ対象外（Wailsのドラッグ判定はCSS変数） */
+    button, input, select, textarea, a { --wails-draggable: none; }
     h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; }
     main { display: grid; grid-template-columns: 240px 1fr; gap: 0; height: calc(100vh - 54px); }
-    aside { background: var(--panel2); border-right: 1px solid var(--border); padding: 10px; overflow: auto; }
+    aside { background: rgba(17,24,39,0.35); border-right: 1px solid rgba(255,255,255,0.08); padding: 10px; overflow: auto; }
     .nav { display: grid; gap: 6px; }
     .nav button { text-align: left; width: 100%; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; }
     .nav button:hover { background: #0b1220; border-color: var(--border); }
     .nav button.active { background: #0b1220; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(96,165,250,0.2) inset; }
     #content { padding: 16px; overflow: auto; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .card { background: rgba(15,23,42,0.40); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 12px; }
     .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
     input, select, button { background: #0b1220; color: var(--text); border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; height: 34px; }
     /* Pull-downs too wide: keep compact by default */
@@ -51,8 +65,8 @@
     .field { display: grid; gap: 4px; }
     .field label { font-size: 12px; color: var(--muted); }
     .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
-    .log { height: 300px; overflow: auto; background: #0b1220; border: 1px solid #334155; border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-    .scenes { height: 360px; overflow: auto; border: 1px solid #334155; border-radius: 8px; padding: 8px; background: #0b1220; }
+    .log { height: 300px; overflow: auto; background: rgba(11,18,32,0.45); border: 1px solid rgba(255,255,255,0.10); border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .scenes { height: 360px; overflow: auto; border: 1px solid rgba(255,255,255,0.10); border-radius: 8px; padding: 8px; background: rgba(11,18,32,0.45); }
     .scene { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
     .scene:hover { background: #1f2937; }
     .ok { color: var(--success); }
