@@ -103,12 +103,13 @@ func normalizeUniqueConnectionNames(c *config.Config) {
 }
 
 // TestConnections は現在の設定で接続テストを行います（接続ごとのパスワード対応）。
+// 無効化された接続はスキップし、有効な接続が1つも無い場合は空の結果を返します（エラーにしない）。
 func (a *App) TestConnections() (map[string]string, error) {
-    if len(a.cfg.Connections) == 0 {
-        return nil, errors.New("接続先がありません")
-    }
     results := map[string]string{}
+    enabledCount := 0
     for _, c := range a.cfg.Connections {
+        if !c.Enabled { continue }
+        enabledCount++
         addr := obsws.NormalizeObsAddr(c.Addr)
         cli, err := openObs(addr, strings.TrimSpace(c.Password))
         if err != nil {
@@ -122,6 +123,10 @@ func (a *App) TestConnections() (map[string]string, error) {
             results[c.Name] = "OK"
         }
         _ = cli.Disconnect()
+    }
+    // 有効な接続が0件でもエラーにしない（空マップを返す）
+    if enabledCount == 0 {
+        return results, nil
     }
     return results, nil
 }
@@ -314,6 +319,12 @@ func (a *App) setSceneCachedPairs(pairs []struct{ addr, pw string }, scene strin
 func (a *App) MidiListDevices() ([]string, error) { return midi.ListInputs() }
 
 func (a *App) MidiGetConfig() (config.MidiConfig, error) { return a.cfg.MIDI, nil }
+
+// MidiIsRunning は現在MIDI入力が動作中かどうかを返します。
+func (a *App) MidiIsRunning() bool { return a.midiDrv != nil }
+
+// MidiCurrentDevice は設定上の現在のMIDIデバイス名を返します（未選択は空文字）。
+func (a *App) MidiCurrentDevice() string { if a == nil || a.cfg == nil { return "" }; return a.cfg.MIDI.Device }
 
 func (a *App) MidiSaveConfig(mc config.MidiConfig) error {
     a.cfg.MIDI = mc

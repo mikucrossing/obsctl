@@ -18,10 +18,11 @@
       --accent: #60a5fa;
       --success: #34d399;
       --error: #f87171;
+      --statusbar-h: 28px;
     }
     *{ box-sizing: border-box }
     /* WebView を完全透過にし、ネイティブのぼかしを見せる */
-    html, body { background: rgba(0,0,0,0); }
+    html, body { background: rgba(0,0,0,0); height: 100%; overflow: hidden; }
     body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; margin: 0; color: var(--text); }
     /* 半透明レイヤにして背後(ネイティブ)の霜ガラスを活かす */
     header {
@@ -37,7 +38,7 @@
     /* クリック可能要素はドラッグ対象外（Wailsのドラッグ判定はCSS変数） */
     button, input, select, textarea, a { --wails-draggable: none; }
     h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; }
-    main { display: grid; grid-template-columns: 240px 1fr; gap: 0; height: calc(100vh - 54px); }
+    main { display: grid; grid-template-columns: 240px 1fr; gap: 0; height: calc(100vh - 41px - var(--statusbar-h)); }
     aside { background: rgba(17,24,39,0.35); border-right: 1px solid rgba(255,255,255,0.08); padding: 10px; overflow: auto; }
     .nav { display: grid; gap: 6px; }
     .nav button { text-align: left; width: 100%; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; }
@@ -104,11 +105,75 @@
     .switch input:checked + .slider:before { transform: translateX(20px); }
     /* Keep focus ring subtle to avoid visual bleed */
     .switch input:focus-visible + .slider { box-shadow: inset 0 0 0 1px rgba(96,165,250,0.25); }
+
+    /* Status bar at bottom */
+    footer#statusbar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: var(--statusbar-h);
+      background: rgba(17,24,39,0.50);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center;
+      padding: 0 12px;
+      font-size: 12px; color: var(--muted);
+      z-index: 10;
+      --wails-draggable: none;
+      backdrop-filter: saturate(120%) blur(16px);
+    }
+    footer#statusbar .spacer { flex: 1; }
   </style>
   <script src="./js/jsqr.js"></script>
   <script>
     function $(q){ return document.querySelector(q) }
     function el(name, attrs={}, text){ const e=document.createElement(name); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); if(text) e.textContent=text; return e }
+
+    // Local runtime flag (fallback when backend methods are not bound by Wails)
+    let __midiRunningFlag = false
+
+    async function updateStatusbar(){
+      const api = (window.go && window.go.main && window.go.main.App) ? window.go.main.App : null
+      // MIDI section (isolated error handling)
+      try{
+        const midiEl = document.getElementById('status-midi')
+        if(midiEl){
+          let running = false
+          let device = ''
+          if(api && typeof api.MidiIsRunning === 'function'){
+            try { running = await api.MidiIsRunning() } catch(_){ running = __midiRunningFlag }
+          } else {
+            running = __midiRunningFlag
+          }
+          if(api && typeof api.MidiCurrentDevice === 'function'){
+            try { device = await api.MidiCurrentDevice() } catch(_){ device = '' }
+          } else if(api && typeof api.MidiGetConfig === 'function'){
+            try { const mc = await api.MidiGetConfig(); device = mc?.device || '' } catch(_){ device = '' }
+          }
+          if(running){ midiEl.textContent = `MIDI: 実行中 (${device||'未指定'})` } else { midiEl.textContent = `MIDI: 停止中${device?` (${device})`:''}` }
+        }
+      }catch(e){
+        const midiEl = document.getElementById('status-midi'); if(midiEl){ midiEl.textContent = 'MIDI: 取得失敗' }
+      }
+
+      // OBS section (isolated error handling)
+      try{
+        const obsEl = document.getElementById('status-obs')
+        const enabledArr = (currentConfig?.connections||[]).filter(c=>c.enabled!==false)
+        if(enabledArr.length === 0){ if(obsEl){ obsEl.textContent = 'OBS: 0/0 接続 OK' } }
+        else if(api && typeof api.TestConnections === 'function'){
+          const res = await api.TestConnections()
+          const enabledNames = new Set(enabledArr.map(c=>c.name))
+          let total = 0, ok = 0
+          for(const [name, st] of Object.entries(res||{})){
+            if(enabledNames.has(name)){ total++; if(String(st).startsWith('OK')) ok++ }
+          }
+          if(obsEl){ obsEl.textContent = `OBS: ${ok}/${total} 接続 OK` }
+        } else {
+          if(obsEl){ obsEl.textContent = 'OBS: 状態取得不可' }
+        }
+      }catch(e){
+        const obsEl = document.getElementById('status-obs'); if(obsEl){ obsEl.textContent = 'OBS: 取得失敗' }
+      }
+    }
 
     let currentConfig = null
     let scenes = []
@@ -523,8 +588,8 @@
       }catch(e){ appendLog('error','MIDI設定の保存に失敗: '+e) }
     }
 
-    async function startMidi(){ try{ await saveMidi(); await window.go.main.App.MidiStart() }catch(e){ appendLog('error','MIDI開始に失敗: '+e) } }
-    async function stopMidi(){ try{ await window.go.main.App.MidiStop() }catch(e){ appendLog('error','MIDI停止に失敗: '+e) } }
+    async function startMidi(){ try{ await saveMidi(); await window.go.main.App.MidiStart(); __midiRunningFlag = true; try{ updateStatusbar() }catch(_){ } }catch(e){ appendLog('error','MIDI開始に失敗: '+e) } }
+    async function stopMidi(){ try{ await window.go.main.App.MidiStop(); __midiRunningFlag = false; try{ updateStatusbar() }catch(_){ } }catch(e){ appendLog('error','MIDI停止に失敗: '+e) } }
 
     async function generateMidiMappings(){
       try{
@@ -596,9 +661,21 @@
     function appendLog(level, msg){ const box = $('#log'); const line = `[${new Date().toLocaleTimeString()}] ${level.toUpperCase()}: ${msg}`; const div = el('div', {class: level==='error'?'ng':'ok'}, line); box.append(div); box.scrollTop = box.scrollHeight }
 
     document.addEventListener('DOMContentLoaded', ()=>{
-      if(window.runtime && window.runtime.EventsOn){ window.runtime.EventsOn('log', (p)=>{ appendLog(p.level||'info', p.msg || '') }) }
-      loadConfig(); loadMidi()
+      if(window.runtime && window.runtime.EventsOn){
+        window.runtime.EventsOn('log', (p)=>{
+          const level = p.level || 'info';
+          const msg = p.msg || ''
+          appendLog(level, msg)
+          // Track MIDI start/stop from backend logs when API bindings are missing
+          if(/^MIDI開始/.test(msg)){ __midiRunningFlag = true; try{ updateStatusbar() }catch(_){ } }
+          if(/^MIDI停止/.test(msg)){ __midiRunningFlag = false; try{ updateStatusbar() }catch(_){ } }
+        })
+      }
+      loadConfig(); loadMidi();
       setView('connections')
+      // 初回と定期的にステータス更新
+      try{ updateStatusbar() }catch(_){ }
+      setInterval(()=>{ try{ updateStatusbar() }catch(_){ } }, 5000)
     })
 
     async function openMidiTest(){
@@ -750,5 +827,11 @@
       </div>
     </div>
   </main>
+  <footer id="statusbar" aria-live="polite" role="status">
+    <span id="status-midi">MIDI: 取得中…</span>
+    <span style="margin: 0 10px; opacity: .5;">|</span>
+    <span id="status-obs">OBS: 取得中…</span>
+    <span class="spacer"></span>
+  </footer>
 </body>
 </html>
