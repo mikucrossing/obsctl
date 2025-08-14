@@ -369,12 +369,47 @@
         else if(/^[\w\.-]+:\d{2,6}$/.test(s)) urlStr = 'http://' + s
         const u = new URL(urlStr)
         const addr = u.host
-        const password = u.searchParams.get('password') || u.searchParams.get('pass') || u.searchParams.get('pw') || ''
+        // Accept multiple possible keys and also check URL fragment (e.g., #password=...)
+        const keys = ['password','pass','pw','p','passphrase','pwd','auth','token']
+        let password = ''
+        // 1) From query string
+        for(const k of keys){
+          const v = u.searchParams.get(k)
+          if(v){ password = v; break }
+        }
+        // 2) From hash fragment
+        if(!password && u.hash){
+          const hash = u.hash.replace(/^#/, '')
+          const hp = new URLSearchParams(hash)
+          for(const k of keys){
+            const v = hp.get(k)
+            if(v){ password = v; break }
+          }
+        }
+        // 3) From path segment (e.g., obsws://host:port/<password>)
+        if(!password && u.pathname){
+          let path = u.pathname
+          if(path.startsWith('/')) path = path.slice(1)
+          if(path){
+            const seg = path.split('/')[0]
+            if(seg){ password = decodeURIComponent(seg) }
+          }
+        }
         const name = `OBS ${u.hostname}`
         return { addr, password, name }
       }catch(e){
-        const m = input.match(/([\w\.-]+:\d{2,6}).*?(?:password|pass|pw)[:=\s]+([^\s&]+)/i)
+        // Fallbacks for free text patterns
+        // a) obsws://host:port/<password>
+        const mPath = input.match(/obsws:\/\/([\w\.-]+:\d{2,6})\/([^?#\s]+)/i)
+        if(mPath){
+          const addr = mPath[1]
+          const password = decodeURIComponent(mPath[2])
+          return { addr, password, name: `OBS ${addr.split(':')[0]}` }
+        }
+        // b) host:port with password-like key-value
+        const m = input.match(/([\w\.-]+:\d{2,6}).*?(?:password|pass|pw|p|passphrase|pwd|auth|token)[:=\s]+([^\s&]+)/i)
         if(m){ return { addr: m[1], password: m[2], name: `OBS ${m[1].split(':')[0]}` } }
+        // c) just host:port
         const m2 = input.match(/([\w\.-]+:\d{2,6})/)
         if(m2){ return { addr: m2[1], password: '', name: `OBS ${m2[1].split(':')[0]}` } }
         return null
