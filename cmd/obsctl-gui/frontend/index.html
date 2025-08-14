@@ -588,7 +588,7 @@
         case 'scenes': return 'シーン 切り替え'
         case 'connections': return '接続'
         case 'import': return 'シーン 一括作成'
-        case 'midi': return 'MIDI'
+        case 'midi': return 'シーン 自動切替（MIDI）'
         case 'logs': return 'ログ'
         default: return ''
       }
@@ -603,9 +603,9 @@
     <aside>
       <div class="nav">
         <button class="active" data-view="connections" onclick="setView('connections')">OBSに接続（WebSocket）</button>
-        <button data-view="scenes" onclick="setView('scenes')">シーン 切り替え</button>
+        <button data-view="scenes" onclick="setView('scenes')">シーン 手動切替</button>
+        <button data-view="midi" onclick="setView('midi')">シーン 自動切替（MIDI）</button>
         <button data-view="import" onclick="setView('import')">シーン 一括作成</button>
-        <button data-view="midi" onclick="setView('midi')">MIDI</button>
         <button data-view="logs" onclick="setView('logs')">ログ</button>
       </div>
     </aside>
