@@ -20,3 +20,39 @@ jobs:
       - name: Run tests
         shell: bash
         run: go test ./...
+
+  build-matrix:
+    # Sanity build to catch compile errors on major OS targets (non-release)
+    needs: [test]
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Build (no cgo)
+        shell: bash
+        run: |
+          VERSION=${GITHUB_SHA::7}
+          LDFLAGS="-s -w -X main.version=$VERSION -X main.commit=$VERSION -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            OUT=obsctl_${{ matrix.goos }}_${{ matrix.goarch }}.exe
+          else
+            OUT=obsctl_${{ matrix.goos }}_${{ matrix.goarch }}
+          fi
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -trimpath -ldflags "$LDFLAGS" -o "$OUT" ./cmd/obsctl

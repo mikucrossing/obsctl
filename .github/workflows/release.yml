@@ -7,8 +7,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-midi-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -16,7 +19,8 @@ jobs:
           go-version: '1.24.x'
       - name: Run tests
         run: go test ./...
-      - name: Prepare
+      - name: Prepare (env + deps)
+        shell: bash
         run: |
           mkdir -p dist
           VERSION=${GITHUB_REF_NAME:-dev}
@@ -27,25 +31,93 @@ jobs:
           echo "COMMIT=$COMMIT" >> $GITHUB_ENV
           echo "DATE=$DATE" >> $GITHUB_ENV
           echo "LDFLAGS=-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$DATE" >> $GITHUB_ENV
-      - name: Build linux amd64
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_linux_amd64 ./cmd/obsctl
-      - name: Build linux arm64
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_linux_arm64 ./cmd/obsctl
-      - name: Build windows amd64
-        run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_windows_amd64.exe ./cmd/obsctl
-      - name: Build windows arm64
-        run: CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_windows_arm64.exe ./cmd/obsctl
-      - name: Build darwin amd64
-        run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_darwin_amd64 ./cmd/obsctl
-      - name: Build darwin arm64
-        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_darwin_arm64 ./cmd/obsctl
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y build-essential pkg-config libasound2-dev
+          fi
+      - name: Install LLVM toolchain (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          choco install -y llvm
+      - name: Build Linux (midi_native)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -eux
+          CGO_ENABLED=1 go build -tags midi_native -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_linux_amd64_midi_native ./cmd/obsctl
+      - name: Package Linux artifact
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -eux
+          install -m 0755 dist/obsctl_linux_amd64_midi_native dist/obsctl
+          tar -C dist -czf dist/obsctl_linux_amd64_midi_native.tar.gz obsctl
+          rm -f dist/obsctl dist/obsctl_linux_amd64_midi_native
+      - name: Build macOS Universal (midi_native)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -eux
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -tags midi_native -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_darwin_arm64_midi_native ./cmd/obsctl
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -tags midi_native -trimpath -ldflags "$LDFLAGS" -o dist/obsctl_darwin_amd64_midi_native ./cmd/obsctl
+          xcrun lipo -create \
+            -output dist/obsctl_darwin_universal_midi_native \
+            dist/obsctl_darwin_amd64_midi_native \
+            dist/obsctl_darwin_arm64_midi_native
+          rm -f dist/obsctl_darwin_amd64_midi_native dist/obsctl_darwin_arm64_midi_native
+      - name: Package macOS artifact
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -eux
+          install -m 0755 dist/obsctl_darwin_universal_midi_native dist/obsctl
+          (cd dist && zip -9 obsctl_darwin_universal_midi_native.zip obsctl)
+          rm -f dist/obsctl dist/obsctl_darwin_universal_midi_native
+      - name: Build Windows amd64 (midi_native)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:CC = "clang"
+          $env:CXX = "clang++"
+          $env:CGO_ENABLED = "1"
+          $env:GOOS = "windows"
+          $env:GOARCH = "amd64"
+          go build -tags midi_native -trimpath -ldflags "$env:LDFLAGS" -o dist/obsctl_windows_amd64_midi_native.exe ./cmd/obsctl
+      - name: Build Windows arm64 (midi_native, best-effort)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $env:CC = "clang"
+          $env:CXX = "clang++"
+          $env:CGO_ENABLED = "1"
+          $env:GOOS = "windows"
+          $env:GOARCH = "arm64"
+          go build -tags midi_native -trimpath -ldflags "$env:LDFLAGS" -o dist/obsctl_windows_arm64_midi_native.exe ./cmd/obsctl
+      - name: Package Windows artifacts
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          if (Test-Path dist/obsctl_windows_amd64_midi_native.exe) {
+            Copy-Item dist/obsctl_windows_amd64_midi_native.exe dist/obsctl.exe -Force
+            Compress-Archive -Path dist/obsctl.exe -DestinationPath dist/obsctl_windows_amd64_midi_native.zip -Force
+            Remove-Item dist/obsctl.exe, dist/obsctl_windows_amd64_midi_native.exe -Force
+          }
+          if (Test-Path dist/obsctl_windows_arm64_midi_native.exe) {
+            Copy-Item dist/obsctl_windows_arm64_midi_native.exe dist/obsctl.exe -Force
+            Compress-Archive -Path dist/obsctl.exe -DestinationPath dist/obsctl_windows_arm64_midi_native.zip -Force
+            Remove-Item dist/obsctl.exe, dist/obsctl_windows_arm64_midi_native.exe -Force
+          }
       - uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: binaries-midi-native
           path: dist/**
 
   release:
-    needs: [build]
+    needs: [build-midi-native]
     runs-on: ubuntu-latest
     permissions:
       contents: write
