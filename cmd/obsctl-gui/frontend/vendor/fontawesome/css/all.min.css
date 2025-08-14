@@ -1,0 +1,57 @@
+/*! Font Awesome Free (subset placeholder) — Offline local stylesheet
+   This repository vendors Font Awesome Free CSS locally for offline environments.
+   To use full icon support, replace this file with the real Font Awesome Free
+   all.min.css and include the webfonts under ../webfonts/.
+
+   Minimal placeholder ensures no 404 in offline mode. It defines base classes
+   so existing markup doesn't break, though no glyphs will render until real
+   assets are placed. */
+
+.fa,
+.fas,
+.fa-solid,
+.far,
+.fa-regular,
+.fab,
+.fa-brands {
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+}
+
+/* Size utilities (subset) */
+.fa-xs { font-size: .75em; }
+.fa-sm { font-size: .875em; }
+.fa-lg { font-size: 1.25em; }
+.fa-1x { font-size: 1em; }
+.fa-2x { font-size: 2em; }
+.fa-3x { font-size: 3em; }
+.fa-4x { font-size: 4em; }
+.fa-5x { font-size: 5em; }
+
+/* Basic rotation utilities (subset) */
+.fa-rotate-90 { transform: rotate(90deg); }
+.fa-rotate-180 { transform: rotate(180deg); }
+.fa-rotate-270 { transform: rotate(270deg); }
+.fa-flip-horizontal { transform: scaleX(-1); }
+.fa-flip-vertical { transform: scaleY(-1); }
+
+/* Placeholder for icons: before pseudo-element, empty by default. */
+.fa::before,
+.fas::before,
+.fa-solid::before,
+.far::before,
+.fa-regular::before,
+.fab::before,
+.fa-brands::before {
+  content: ""; /* Replace with real glyphs when webfonts are added */
+}
+
+/* Note: To enable real icons, vendor these files from Font Awesome Free v6.x:
+   - css/all.min.css (replace this placeholder)
+   - webfonts/fa-solid-900.woff2
+   - webfonts/fa-regular-400.woff2
+   - webfonts/fa-brands-400.woff2
+   And ensure @font-face declarations in the real CSS point to ../webfonts/. */
