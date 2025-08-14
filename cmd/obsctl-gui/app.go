@@ -73,9 +73,34 @@ func (a *App) GetConfig() (*config.Config, error) {
 // SaveConfig は設定を保存します。
 func (a *App) SaveConfig(c *config.Config) error {
     if c == nil { return errors.New("config is nil") }
+    // 重複する接続名を保存前に正規化（同名は "Name (2)" などに）
+    normalizeUniqueConnectionNames(c)
     a.cfg = c
     if err := config.Save(c); err != nil { return err }
     return a.emitLog("info", "設定を保存しました")
+}
+
+// normalizeUniqueConnectionNames は接続名の重複を解消する。
+func normalizeUniqueConnectionNames(c *config.Config) {
+    if c == nil || len(c.Connections) == 0 { return }
+    used := map[string]struct{}{}
+    for i := range c.Connections {
+        name := strings.TrimSpace(c.Connections[i].Name)
+        if name == "" { name = fmt.Sprintf("OBS %d", i+1) }
+        base := name
+        try := base
+        suffix := 2
+        for {
+            key := strings.ToLower(strings.TrimSpace(try))
+            if _, ok := used[key]; !ok {
+                c.Connections[i].Name = try
+                used[key] = struct{}{}
+                break
+            }
+            try = fmt.Sprintf("%s (%d)", base, suffix)
+            suffix++
+        }
+    }
 }
 
 // TestConnections は現在の設定（Connections + CommonPassword）で接続テストを行います。

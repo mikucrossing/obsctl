@@ -61,9 +61,33 @@ func (a *App) GetConfig() (*config.Config, error) {
 }
 func (a *App) SaveConfig(c *config.Config) error {
     if c == nil { return errors.New("config is nil") }
+    normalizeUniqueConnectionNames(c)
     a.cfg = c
     if err := config.Save(c); err != nil { return err }
     return a.emitLog("info", "設定を保存しました")
+}
+
+// normalizeUniqueConnectionNames は接続名の重複を解消する（GUI保存時）。
+func normalizeUniqueConnectionNames(c *config.Config) {
+    if c == nil || len(c.Connections) == 0 { return }
+    used := map[string]struct{}{}
+    for i := range c.Connections {
+        name := strings.TrimSpace(c.Connections[i].Name)
+        if name == "" { name = fmt.Sprintf("OBS %d", i+1) }
+        base := name
+        try := base
+        suffix := 2
+        for {
+            key := strings.ToLower(strings.TrimSpace(try))
+            if _, ok := used[key]; !ok {
+                c.Connections[i].Name = try
+                used[key] = struct{}{}
+                break
+            }
+            try = fmt.Sprintf("%s (%d)", base, suffix)
+            suffix++
+        }
+    }
 }
 
 // 接続テスト

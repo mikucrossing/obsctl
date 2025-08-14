@@ -4,6 +4,13 @@ OBS WebSocket を操作するCLIツールです。複数OBSへの同時シーン
 
 GUI版（Windows/macOS）は Wails ベースのデスクトップアプリを同梱しています。詳細は `docs/GUI.md` を参照してください。
 
+注意（macOSの警告について）:
+- GitHub Releases からダウンロードした `.app` は、Apple公証を行っていないため最初の起動時にGatekeeperの警告が出ます（無料枠では回避不可）。
+- 対応策:
+  - Finderで`obsctl.app`を右クリック→「開く」→ダイアログの「開く」（初回のみ）
+  - もしくはターミナルで隔離属性を削除: `xattr -dr com.apple.quarantine /Applications/obsctl.app`
+  - ターミナルインストール（隔離が付きにくい）: `scripts/install-macos.sh` を参照
+
 ## クイックスタート
 
 ```

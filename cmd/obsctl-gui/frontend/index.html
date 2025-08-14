@@ -5,27 +5,69 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>obsctl GUI</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-    header { background: #111827; padding: 12px 16px; position: sticky; top: 0; z-index: 1; }
-    h1 { font-size: 16px; margin: 0; }
-    main { display: grid; grid-template-columns: clamp(380px, 40vw, 560px) 1fr; gap: 16px; padding: 16px; }
-    section { background: #111827; padding: 12px; border-radius: 8px; }
-    .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
-    input, select, button { background: #0b1220; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 6px 8px; }
-    input[type="checkbox"] { width: auto; height: auto; padding: 0; margin: 0 6px 0 0; border: none; background: transparent; }
-    input:focus, select:focus { outline: none; border-color: #60a5fa; }
+    :root{
+      --bg: #0b0f14;
+      --panel: #0f172a;
+      --panel2: #111827;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #243244;
+      --ring: #60a5fa;
+      --accent: #60a5fa;
+      --success: #34d399;
+      --error: #f87171;
+    }
+    *{ box-sizing: border-box }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    header { background: var(--panel2); padding: 12px 16px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
+    h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+    main { display: grid; grid-template-columns: 240px 1fr; gap: 0; height: calc(100vh - 54px); }
+    aside { background: var(--panel2); border-right: 1px solid var(--border); padding: 10px; overflow: auto; }
+    .nav { display: grid; gap: 6px; }
+    .nav button { text-align: left; width: 100%; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; }
+    .nav button:hover { background: #0b1220; border-color: var(--border); }
+    .nav button.active { background: #0b1220; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(96,165,250,0.2) inset; }
+    #content { padding: 16px; overflow: auto; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+    input, select, button { background: #0b1220; color: var(--text); border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; height: 34px; }
+    /* Pull-downs too wide: keep compact by default */
+    /* Compact pull-downs */
+    select { width: 160px; max-width: 160px; min-width: 0; }
+    /* Specific compact selects */
+    #imp-conn { width: 160px; max-width: 160px; }
+    #midi-device, #midi-gen-conn { width: 160px; max-width: 160px; }
+    input[type="checkbox"] { width: auto; height: auto; padding: 0; margin: 0 6px 0 0; border: none; background: transparent; height: auto; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 2px rgba(96,165,250,0.25); }
     button { cursor: pointer; }
-    .grow { flex: 1 1 200px; min-width: 180px; }
-    .muted { color: #94a3b8; }
-    .list { display: grid; gap: 6px; }
-    .log { height: 220px; overflow: auto; background: #0b1220; border: 1px solid #334155; border-radius: 6px; padding: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-    .scenes { height: 260px; overflow: auto; border: 1px solid #334155; border-radius: 6px; padding: 8px; background: #0b1220; }
-    .scene { padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+    .grow { flex: 1 1 220px; min-width: 200px; }
+    .muted, small { color: var(--muted); }
+    .list { display: grid; gap: 8px; }
+    /* Connection cards */
+    .conn-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; display: grid; gap: 10px; }
+    .conn-head { display: flex; align-items: center; gap: 8px; }
+    .conn-head .spacer { flex: 1; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { display: grid; gap: 4px; }
+    .field label { font-size: 12px; color: var(--muted); }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .log { height: 300px; overflow: auto; background: #0b1220; border: 1px solid #334155; border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .scenes { height: 360px; overflow: auto; border: 1px solid #334155; border-radius: 8px; padding: 8px; background: #0b1220; }
+    .scene { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
     .scene:hover { background: #1f2937; }
-    .ok { color: #34d399; }
-    .ng { color: #f87171; }
-    small { color: #94a3b8; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ok { color: var(--success); }
+    .ng { color: var(--error); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hidden { display: none; }
+    /* iOS-like switch */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; vertical-align: middle; line-height: 0; border-radius: 9999px; overflow: hidden; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #334155; border-radius: 9999px; transition: background .2s ease; border: 0; }
+    .switch .slider:before { content:""; position: absolute; height: 20px; width: 20px; left: 2px; top: 2px; background: #ffffff; border-radius: 50%; transition: transform .2s ease; }
+    .switch input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+    .switch input:checked + .slider:before { transform: translateX(20px); }
+    /* Keep focus ring subtle to avoid visual bleed */
+    .switch input:focus-visible + .slider { box-shadow: inset 0 0 0 1px rgba(96,165,250,0.25); }
   </style>
   <script>
     function $(q){ return document.querySelector(q) }
@@ -33,6 +75,7 @@
 
     let currentConfig = null
     let scenes = []
+    let autosaveTimer = null
 
     async function loadConfig(){
       try{
@@ -47,20 +90,60 @@
       list.innerHTML = ''
       const pwd = $('#common-password')
       pwd.value = currentConfig.common_password || ''
+      pwd.oninput = ()=>{ currentConfig.common_password = pwd.value; if(currentConfig.common_password===undefined) currentConfig.common_password=''; scheduleAutoSave() }
       ;(currentConfig.connections || []).forEach((c, idx) => {
-        const row = el('div', {class:'row'})
+        const card = el('div', {class:'conn-card'})
+        const head = el('div', {class:'conn-head'})
         const name = el('input', {placeholder:'名前', value:c.name||''}); name.className='grow'
-        const addr = el('input', {placeholder:'host:port', value:c.addr||''}); addr.className='grow'
-        const enabled = el('input', {type:'checkbox'}); enabled.checked = c.enabled !== false
-        const enabledWrap = el('label', {}, ''); enabledWrap.append(enabled, document.createTextNode('有効'))
-        const del = el('button', {}, '削除')
+        const spacer = el('div', {class:'spacer'})
+        // iOS-like switch
+        const sw = el('label', {class:'switch'})
+        const enabled = el('input', {type:'checkbox', 'aria-label':'有効'})
+        enabled.checked = c.enabled !== false
+        const slider = el('span', {class:'slider'})
+        sw.append(enabled, slider)
+        const del = el('button', {class:'btn-ghost'}, '削除')
         del.onclick = ()=>{ currentConfig.connections.splice(idx,1); renderConnections() }
-        row.append('名前:', name, ' アドレス:', addr, enabledWrap, del)
-        list.append(row)
-        name.oninput = ()=>{ currentConfig.connections[idx].name = name.value }
-        addr.oninput = ()=>{ currentConfig.connections[idx].addr = addr.value }
-        enabled.onchange = ()=>{ currentConfig.connections[idx].enabled = enabled.checked }
+        head.append(name, spacer, sw, del)
+
+        const hp = splitAddr(c.addr||'')
+        const fields = el('div', {class:'fields'})
+        const fHost = el('div', {class:'field'})
+        const lHost = el('label', {}, 'サーバーIP')
+        const host = el('input', {placeholder:'localhost', value: hp.host || 'localhost'})
+        fHost.append(lHost, host)
+        const fPort = el('div', {class:'field'})
+        const lPort = el('label', {}, 'サーバーポート')
+        const port = el('input', {type:'number', min:'1', max:'65535', value: hp.port || '4455'})
+        fPort.append(lPort, port)
+        fields.append(fHost, fPort)
+
+        card.append(head, fields)
+        list.append(card)
+
+        // 双方向反映
+        name.oninput = ()=>{ currentConfig.connections[idx].name = name.value; scheduleAutoSave() }
+        const updateAddr = ()=>{
+          const h = (host.value||'').trim()
+          let p = parseInt(port.value,10); if(!Number.isFinite(p) || p <=0 || p>65535){ p = 4455 }
+          currentConfig.connections[idx].addr = h ? `${h}:${p}` : ''
+        }
+        host.oninput = ()=>{ updateAddr(); scheduleAutoSave() }
+        port.oninput = ()=>{ updateAddr(); scheduleAutoSave() }
+        enabled.onchange = ()=>{ currentConfig.connections[idx].enabled = enabled.checked; scheduleAutoSave() }
       })
+    }
+
+    function splitAddr(addr){
+      try{
+        let a = (addr||'').trim()
+        if(a.startsWith('ws://')) a = a.slice(5)
+        if(a.startsWith('wss://')) a = a.slice(6)
+        let host = a, port = 4455
+        const i = a.lastIndexOf(':')
+        if(i>0){ const tail = a.slice(i+1); if(/^\d+$/.test(tail)){ host = a.slice(0,i); port = parseInt(tail,10) } }
+        return {host, port}
+      }catch(e){ return {host:'', port:4455} }
     }
 
     function renderImportDefaults(){
@@ -70,11 +153,37 @@
       $('#imp-transition').value = d.transition || 'fade'
       $('#imp-monitoring').value = d.monitoring || 'off'
       const sel = $('#imp-conn'); sel.innerHTML = ''
-      ;(currentConfig.connections||[]).filter(c=>c.enabled!==false).forEach(c=>{ sel.append(el('option', {value:c.name}, c.name || c.addr)) })
-      const genSel = $('#midi-gen-conn'); if(genSel){ genSel.innerHTML=''; (currentConfig.connections||[]).filter(c=>c.enabled!==false).forEach(c=>{ genSel.append(el('option',{value:c.name}, c.name||c.addr)) }) }
+      ;(currentConfig.connections||[]).filter(c=>c.enabled!==false).forEach(c=>{ const label=c.name||c.addr; sel.append(el('option', {value:c.name, title: label}, label)) })
+      const genSel = $('#midi-gen-conn'); if(genSel){ genSel.innerHTML=''; (currentConfig.connections||[]).filter(c=>c.enabled!==false).forEach(c=>{ const label=c.name||c.addr; genSel.append(el('option',{value:c.name, title: label}, label)) }) }
     }
 
-    function addConnection(){ if(!currentConfig.connections) currentConfig.connections = []; currentConfig.connections.push({name:'', addr:'', enabled:true}); renderConnections() }
+    function addConnection(){
+      if(!currentConfig.connections) currentConfig.connections = []
+      const name = ensureUniqueName(nextObsName())
+      currentConfig.connections.push({name, addr:'localhost:4455', enabled:true})
+      renderConnections(); scheduleAutoSave()
+    }
+
+    function nextObsName(){
+      const used = new Set()
+      ;(currentConfig.connections||[]).forEach(c=>{
+        const m = String(c.name||'').trim().match(/^OBS\s+(\d+)$/i)
+        if(m){ const n = parseInt(m[1],10); if(Number.isFinite(n)&&n>0) used.add(n) }
+      })
+      for(let i=1;i<9999;i++){ if(!used.has(i)) return `OBS ${i}` }
+      return 'OBS'
+    }
+
+    function ensureUniqueName(base){
+      const names = new Set((currentConfig.connections||[]).map(c=>String(c.name||'').trim().toLowerCase()))
+      let name = String(base||'').trim() || 'OBS'
+      if(!names.has(name.toLowerCase())) return name
+      for(let i=2;i<1000;i++){
+        const cand = `${name} (${i})`
+        if(!names.has(cand.toLowerCase())) return cand
+      }
+      return `${name}-${Date.now()}`
+    }
 
     function addByQR(){
       const s = prompt('OBSの接続情報（obsws://... もしくは ws(s)://...）を貼り付けてください')
@@ -82,13 +191,13 @@
       const parsed = parseObswsString(s)
       if(!parsed){ appendLog('error','解析できませんでした'); return }
       if(!currentConfig.connections) currentConfig.connections = []
-      const name = parsed.name || `OBS ${parsed.addr}`
+      const name = ensureUniqueName(parsed.name || `OBS ${parsed.addr}`)
       currentConfig.connections.push({ name, addr: parsed.addr, enabled: true })
       if(parsed.password){
         if(!currentConfig.common_password){ currentConfig.common_password = parsed.password }
         else if(currentConfig.common_password !== parsed.password){ if(confirm('共通パスワードが異なります。上書きしますか？')){ currentConfig.common_password = parsed.password } }
       }
-      renderConnections(); renderImportDefaults(); appendLog('info','QR/URLから接続を追加しました')
+      renderConnections(); renderImportDefaults(); appendLog('info','QR/URLから接続を追加しました'); scheduleAutoSave()
     }
 
     function parseObswsString(input){
@@ -159,6 +268,15 @@
     async function chooseDir(){
       try{ const current = $('#imp-dir').value || ''; const res = await window.go.main.App.OpenDirectoryDialog(current, '動画ディレクトリを選択'); if(res){ $('#imp-dir').value = res } }
       catch(e){ appendLog('error','ディレクトリ選択に失敗: '+e) }
+    }
+
+    // Auto-save with debounce (500ms)
+    function scheduleAutoSave(){
+      clearTimeout(autosaveTimer)
+      autosaveTimer = setTimeout(doAutoSave, 500)
+    }
+    async function doAutoSave(){
+      try{ await window.go.main.App.SaveConfig(currentConfig) }catch(e){ /* silent */ }
     }
 
     // MIDI
@@ -278,95 +396,140 @@
     document.addEventListener('DOMContentLoaded', ()=>{
       if(window.runtime && window.runtime.EventsOn){ window.runtime.EventsOn('log', (p)=>{ appendLog(p.level||'info', p.msg || '') }) }
       loadConfig(); loadMidi()
+      setView('connections')
     })
 
     async function openMidiTest(){
       try{ await window.go.main.App.OpenExternalURL('https://studiocode.dev/webmidi-tester/') }
       catch(e){ appendLog('error','ブラウザ起動に失敗: '+e) }
     }
+
+    // View switching (Settings-like)
+    function setView(name){
+      const views = ['scenes','connections','import','midi','logs']
+      views.forEach(v=>{
+        const elv = document.getElementById('view-'+v)
+        if(elv){ elv.classList.toggle('hidden', v!==name) }
+      })
+      const buttons = document.querySelectorAll('.nav button')
+      buttons.forEach(b=>{ b.classList.toggle('active', (b.dataset && b.dataset.view) === name) })
+    }
+    function labelOf(name){
+      switch(name){
+        case 'scenes': return 'シーン'
+        case 'connections': return '接続'
+        case 'import': return 'シーン 一括作成'
+        case 'midi': return 'MIDI'
+        case 'logs': return 'ログ'
+        default: return ''
+      }
+    }
   </script>
 </head>
 <body>
   <header>
-    <h1>obsctl GUI <small class="muted">シーン切替 / インポート / MIDI</small></h1>
+    <h1>obsctl GUI</h1>
   </header>
   <main>
-    <section>
-      <h3>接続</h3>
-      <div id="conn-list" class="list"></div>
-      <div class="row">
-        <button onclick="addConnection()">接続を追加</button>
-        <button onclick="addByQR()">QR/URLから追加</button>
-        <span class="muted">（OBSの接続情報でリンク/QRテキストを貼り付け）</span>
+    <aside>
+      <div class="nav">
+        <button class="active" data-view="connections" onclick="setView('connections')">OBSに接続（WebSocket）</button>
+        <button data-view="scenes" onclick="setView('scenes')">シーン</button>
+        <button data-view="import" onclick="setView('import')">シーン 一括作成</button>
+        <button data-view="midi" onclick="setView('midi')">MIDI</button>
+        <button data-view="logs" onclick="setView('logs')">ログ</button>
       </div>
-      <div class="row">共通パスワード: <input type="password" id="common-password" placeholder="password" /></div>
-      <div class="row">
-        <button onclick="saveConfig()">設定を保存</button>
-        <button onclick="testConnections()">接続テスト</button>
-      </div>
-      <div id="conn-result" class="list"></div>
-      <hr/>
-      <h3>インポート</h3>
-      <div class="grid2">
-        <div>接続先: <select id="imp-conn"></select></div>
-        <div>ディレクトリ: <input id="imp-dir" class="grow" placeholder="/path/to/videos" /> <button onclick="chooseDir()">選択…</button></div>
-        <div>トランジション: 
-          <select id="imp-transition"><option value="fade">fade</option><option value="cut">cut</option></select>
+    </aside>
+    <div id="content">
+      <div id="view-scenes" class="card">
+        <div class="row">
+          <button onclick="loadScenes()">共通シーンを読み込み</button>
+          <span class="muted">（全接続に存在するシーンのみ表示）</span>
         </div>
-        <div>モニタリング: 
-          <select id="imp-monitoring">
-            <option value="off">off</option>
-            <option value="monitor-only">monitor-only</option>
-            <option value="monitor-and-output">monitor-and-output</option>
-          </select>
+        <div id="scenes" class="scenes"></div>
+      </div>
+
+      <div id="view-connections" class="card hidden" style="margin-top:16px;">
+        <h3>OBSに接続（WebSocket）</h3>
+        <div id="conn-list" class="list"></div>
+        <div class="row">
+          <button onclick="addConnection()">接続を追加</button>
+          <button onclick="addByQR()">QR/URLから追加</button>
+          <span class="muted">（OBSの接続情報でリンク/QRテキストを貼り付け）</span>
         </div>
-        <label><input type="checkbox" id="imp-loop" /> ループ</label>
-        <label><input type="checkbox" id="imp-activate" /> 作成後にアクティブ化</label>
+        <div class="row">サーバーパスワード: <input type="password" id="common-password" placeholder="password" /></div>
+        <div class="row">
+          <button onclick="testConnections()">接続テスト</button>
+        </div>
+        <div id="conn-result" class="list"></div>
       </div>
-      <div class="row"><button onclick="doImport()">インポート実行</button></div>
-    </section>
-    <section>
-      <h3>シーン切替</h3>
-      <div class="row">
-        <button onclick="loadScenes()">共通シーンを読み込み</button>
-        <span class="muted">（全接続に存在するシーンのみ表示）</span>
+
+      <div id="view-import" class="card hidden" style="margin-top:16px;">
+        <h3>シーン一括作成</h3>
+        <div class="row"><small class="muted">選んだフォルダの動画をシーンとしてまとめて登録します</small></div>
+        <div class="grid2">
+          <div>登録先OBS: <select id="imp-conn"></select></div>
+          <div>ディレクトリ: <input id="imp-dir" class="grow" placeholder="/path/to/videos" /> <button onclick="chooseDir()">選択…</button></div>
+          <div>トランジション: 
+            <select id="imp-transition"><option value="fade">fade</option><option value="cut">cut</option></select>
+          </div>
+          <div>モニタリング: 
+            <select id="imp-monitoring">
+              <option value="off">off</option>
+              <option value="monitor-only">monitor-only</option>
+              <option value="monitor-and-output">monitor-and-output</option>
+            </select>
+          </div>
+          <div>ループ:
+            <label class="switch"><input type="checkbox" id="imp-loop" aria-label="ループ" /><span class="slider"></span></label>
+          </div>
+          <div>作成後にアクティブ化:
+            <label class="switch"><input type="checkbox" id="imp-activate" aria-label="作成後にアクティブ化" /><span class="slider"></span></label>
+          </div>
+        </div>
+        <div class="row"><button onclick="doImport()">インポート実行</button></div>
       </div>
-      <div id="scenes" class="scenes"></div>
-      <h3>MIDI</h3>
-      <div class="grid2">
-        <div>デバイス: <select id="midi-device"></select> <button onclick="refreshMidiDevices()">更新</button></div>
-        <div>チャネル: <input id="midi-channel" placeholder="例: 1,2 (未指定は全て)" /></div>
-        <div>デバウンス: <input id="midi-debounce" placeholder="30ms" /></div>
-        <div>レート制限: <input id="midi-ratelimit" placeholder="50ms" /></div>
+
+      <div id="view-midi" class="card hidden" style="margin-top:16px;">
+        <h3>MIDI</h3>
+        <div class="grid2">
+          <div>デバイス: <select id="midi-device"></select> <button onclick="refreshMidiDevices()">更新</button></div>
+          <div>チャネル: <input id="midi-channel" placeholder="例: 1,2 (未指定は全て)" /></div>
+          <div>デバウンス: <input id="midi-debounce" placeholder="30ms" /></div>
+          <div>レート制限: <input id="midi-ratelimit" placeholder="50ms" /></div>
+        </div>
+        <div class="row">
+          <button onclick="openMidiTest()">WebMIDIテストページを開く</button>
+        </div>
+        <div class="row">
+          <strong>自動生成:</strong>
+          <span>接続先</span>
+          <select id="midi-gen-conn"></select>
+          <span>チャネル</span>
+          <input id="midi-gen-channel" value="1" style="width:60px" />
+          <span>開始ノート</span>
+          <input id="midi-gen-start" value="36" style="width:60px" />
+          <button onclick="generateMidiMappings()">生成して置換</button>
+        </div>
+        <div class="row">
+          <strong>表示:</strong>
+          <button onclick="setMappingMode('table')">表</button>
+          <button onclick="setMappingMode('text')">テキスト</button>
+          <span class="muted">（保存時はどちらの表示でもOK）</span>
+        </div>
+        <div id="mapping-container"></div>
+        <div class="row">
+          <button onclick="saveMidi()">MIDI設定を保存</button>
+          <button onclick="startMidi()">開始</button>
+          <button onclick="stopMidi()">停止</button>
+        </div>
       </div>
-      <div class="row">
-        <button onclick="openMidiTest()">WebMIDIテストページを開く</button>
+
+      <div id="view-logs" class="card hidden" style="margin-top:16px;">
+        <h3>ログ</h3>
+        <div id="log" class="log"></div>
       </div>
-      <div class="row">
-        <strong>自動生成:</strong>
-        <span>接続先</span>
-        <select id="midi-gen-conn"></select>
-        <span>チャネル</span>
-        <input id="midi-gen-channel" value="1" style="width:60px" />
-        <span>開始ノート</span>
-        <input id="midi-gen-start" value="36" style="width:60px" />
-        <button onclick="generateMidiMappings()">生成して置換</button>
-      </div>
-      <div class="row">
-        <strong>表示:</strong>
-        <button onclick="setMappingMode('table')">表</button>
-        <button onclick="setMappingMode('text')">テキスト</button>
-        <span class="muted">（保存時はどちらの表示でもOK）</span>
-      </div>
-      <div id="mapping-container"></div>
-      <div class="row">
-        <button onclick="saveMidi()">MIDI設定を保存</button>
-        <button onclick="startMidi()">開始</button>
-        <button onclick="stopMidi()">停止</button>
-      </div>
-      <h3>ログ</h3>
-      <div id="log" class="log"></div>
-    </section>
+    </div>
   </main>
 </body>
 </html>
