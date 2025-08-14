@@ -119,8 +119,10 @@ func ImportScenes(opts ImportOptions) error {
             continue
         }
         ext := strings.ToLower(filepath.Ext(e.Name()))
-        if !isVideoExt(ext) {
-            debugf("動画拡張子ではないためスキップ: %s", e.Name())
+        isVideo := isVideoExt(ext)
+        isImage := isImageExt(ext)
+        if !isVideo && !isImage {
+            debugf("対応拡張子ではないためスキップ: %s", e.Name())
             continue
         }
         full := filepath.Join(opts.Dir, e.Name())
@@ -142,18 +144,30 @@ func ImportScenes(opts ImportOptions) error {
         }
         existing[sceneName] = struct{}{}
 
-        // Media Source 追加（ffmpeg_source）
-        inputSettings := map[string]any{
-            "local_file":          full,    // 再生するローカル動画
-            "is_local_file":       true,    // 念のため明示
-            "looping":             opts.Loop,
-            "restart_on_activate": true,    // シーン切替時に頭出し
-            "close_when_inactive": false,   // 非アクティブ時に閉じない
-            "hw_decode":           true,    // 環境により有効/無効
+        // 入力ソース追加（動画: ffmpeg_source / 画像: image_source）
+        var inputSettings map[string]any
+        var inputKind string
+        var inputName string
+        if isVideo {
+            inputSettings = map[string]any{
+                "local_file":          full,    // 再生するローカル動画
+                "is_local_file":       true,    // 念のため明示
+                "looping":             opts.Loop,
+                "restart_on_activate": true,    // シーン切替時に頭出し
+                "close_when_inactive": false,   // 非アクティブ時に閉じない
+                "hw_decode":           true,    // 環境により有効/無効
+            }
+            inputKind = "ffmpeg_source"
+            inputName = sceneName + " Media"
+        } else { // image
+            inputSettings = map[string]any{
+                "file":   full,
+                "unload": false, // 非アクティブ時もアンロードしない
+            }
+            inputKind = "image_source"
+            inputName = sceneName + " Image"
         }
 
-        inputName := sceneName + " Media"
-        inputKind := "ffmpeg_source"
         _, err = client.Inputs.CreateInput(&inputs.CreateInputParams{
             SceneName:     &sceneName,
             InputName:     &inputName,
@@ -161,21 +175,23 @@ func ImportScenes(opts ImportOptions) error {
             InputSettings: inputSettings,
         })
         if err != nil {
-            log.Printf("Media Source 追加失敗 (%s): %v", sceneName, err)
+            log.Printf("ソース追加失敗 (%s): %v", sceneName, err)
             debugf("CreateInput params: scene=%s, name=%s, kind=%s, file=%s, loop=%v", sceneName, inputName, inputKind, full, opts.Loop)
             continue
         }
 
-        // 音声モニタリング設定（既定: off）。失敗しても致命ではない。
-        monType := normalizeMonitoringType(opts.Monitoring)
-        if _, err := client.Inputs.SetInputAudioMonitorType(
-            inputs.NewSetInputAudioMonitorTypeParams().
-                WithInputName(inputName).
-                WithMonitorType(monType),
-        ); err != nil {
-            log.Printf("音声モニタリング設定に失敗しました (%s -> %s): %v", inputName, monType, err)
-        } else {
-            debugf("音声モニタリング設定: input=%q type=%q", inputName, monType)
+        // 音声モニタリング設定（既定: off）。動画のみ（画像には音声がない）
+        if isVideo {
+            monType := normalizeMonitoringType(opts.Monitoring)
+            if _, err := client.Inputs.SetInputAudioMonitorType(
+                inputs.NewSetInputAudioMonitorTypeParams().
+                    WithInputName(inputName).
+                    WithMonitorType(monType),
+            ); err != nil {
+                log.Printf("音声モニタリング設定に失敗しました (%s -> %s): %v", inputName, monType, err)
+            } else {
+                debugf("音声モニタリング設定: input=%q type=%q", inputName, monType)
+            }
         }
 
         log.Printf("作成完了: シーン「%s」 <- %s", sceneName, full)
@@ -225,6 +241,15 @@ func ImportScenes(opts ImportOptions) error {
 func isVideoExt(ext string) bool {
     switch ext {
     case ".mp4", ".mov", ".mkv", ".webm":
+        return true
+    default:
+        return false
+    }
+}
+
+func isImageExt(ext string) bool {
+    switch ext {
+    case ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif":
         return true
     default:
         return false

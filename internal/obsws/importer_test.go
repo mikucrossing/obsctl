@@ -17,6 +17,21 @@ func TestIsVideoExt(t *testing.T) {
     }
 }
 
+func TestIsImageExt(t *testing.T) {
+    ok := []string{".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"}
+    ng := []string{".txt", ".mp4", ".mov", ""}
+    for _, e := range ok {
+        if !isImageExt(e) {
+            t.Fatalf("expected true for %q", e)
+        }
+    }
+    for _, e := range ng {
+        if isImageExt(e) {
+            t.Fatalf("expected false for %q", e)
+        }
+    }
+}
+
 func TestSanitizeName(t *testing.T) {
     cases := map[string]string{
         "abc":               "abc",
