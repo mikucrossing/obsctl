@@ -15,6 +15,8 @@ GUI版（Windows/macOS）は Wails ベースのデスクトップアプリを同
 
 ```
 go build -o obsctl ./cmd/obsctl
+
+wails dev -tags midi_native
 ```
 
 例:
