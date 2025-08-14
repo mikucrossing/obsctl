@@ -177,7 +177,14 @@ jobs:
           set -eux
           wails build --clean -platform darwin/universal -tags midi_native
           cd build/bin
-          zip -9 ../../dist/obsctl-gui_darwin_universal_midi_native.zip obsctl-gui.app -r
+          # Expect the bundle name to be obsctl.app
+          if [[ -d "obsctl.app" ]]; then
+            zip -9 ../../dist/obsctl-gui_darwin_universal_midi_native.zip obsctl.app -r
+          else
+            # Fallback: zip whatever .app is present (defensive)
+            APP_DIR=$(ls -d *.app | head -n1)
+            zip -9 ../../dist/obsctl-gui_darwin_universal_midi_native.zip "$APP_DIR" -r
+          fi
       - name: Build GUI (Windows amd64)
         if: runner.os == 'Windows'
         shell: pwsh

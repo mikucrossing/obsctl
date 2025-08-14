@@ -1,6 +1,6 @@
 {
   "$schema": "https://wails.io/schemas/v2.json",
-  "name": "obsctl GUI",
+  "name": "obsctl",
   "description": "OBS WebSocket controller GUI",
   "version": "0.1.0",
   "author": { "name": "obsctl", "email": "" },
