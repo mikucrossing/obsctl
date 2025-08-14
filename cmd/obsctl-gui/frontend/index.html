@@ -70,6 +70,8 @@
     .icon-btn:hover { background: #0b1220; border-color: #334155; }
     .icon-btn svg { width: 18px; height: 18px; fill: currentColor; color: var(--text); opacity: 0.9; }
     .icon-btn img { width: 18px; height: 18px; opacity: 0.9; }
+    /* Slightly larger icon variant */
+    .icon-btn img.lg { width: 20px; height: 20px; }
     /* QR overlay */
     .qr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: grid; place-items: center; z-index: 1000; }
     .qr-modal { background: rgba(15,23,42,0.9); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px; width: min(92vw, 520px); }
@@ -619,12 +621,13 @@
         <h3>OBSに接続（WebSocket）</h3>
         <div id="conn-list" class="list"></div>
         <div class="row">
-          <button onclick="addConnection()">接続を追加</button>
+          <button class="icon-btn" onclick="addConnection()" title="接続を追加" aria-label="接続を追加">
+            <img class="lg" src="img/icon_plus.svg" width="18" height="18" alt="" aria-hidden="true" />
+          </button>
           <button class="icon-btn" onclick="addByQR()" title="QRで追加" aria-label="QRで追加">
             <img src="img/icon_qr.svg" width="18" height="18" alt="" aria-hidden="true" />
           </button>
-        </div>
-        <div class="row">
+          <div style="flex:1"></div>
           <button onclick="testConnections()">接続テスト</button>
         </div>
         <div id="conn-result" class="list"></div>
