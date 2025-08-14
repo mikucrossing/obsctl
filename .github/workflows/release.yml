@@ -40,6 +40,15 @@ jobs:
         shell: powershell
         run: |
           choco install -y mingw
+      - name: Setup MSYS2 (clangarm64 toolchain for ARM64)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: clangarm64
+          install: >-
+            base-devel
+            mingw-w64-clang-aarch64-toolchain
       - name: Build Linux (midi_native)
         if: runner.os == 'Linux'
         shell: bash
@@ -89,9 +98,19 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          # If aarch64 MinGW is present, use it; otherwise this step may fail.
-          $env:CC = "aarch64-w64-mingw32-gcc"
-          $env:CXX = "aarch64-w64-mingw32-g++"
+          # Use LLVM-Mingw via MSYS2 clangarm64 toolchain if available
+          $clang = "C:\msys64\clangarm64\bin\clang.exe"
+          $clangpp = "C:\msys64\clangarm64\bin\clang++.exe"
+          if (Test-Path $clang -PathType Leaf) {
+            $env:CC = $clang
+            $env:CXX = $clangpp
+            $env:CGO_CFLAGS = "--target=aarch64-w64-mingw32"
+            $env:CGO_CXXFLAGS = "--target=aarch64-w64-mingw32"
+            $env:CGO_LDFLAGS = "--target=aarch64-w64-mingw32"
+          } else {
+            Write-Host "clangarm64 toolchain not found; skipping ARM64 build"
+            exit 0
+          }
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
           $env:GOARCH = "arm64"
