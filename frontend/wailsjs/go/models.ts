@@ -44,6 +44,7 @@ export namespace config {
 	    name: string;
 	    addr: string;
 	    enabled: boolean;
+	    password: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Connection(source);
@@ -54,6 +55,7 @@ export namespace config {
 	        this.name = source["name"];
 	        this.addr = source["addr"];
 	        this.enabled = source["enabled"];
+	        this.password = source["password"];
 	    }
 	}
 	export class Config {

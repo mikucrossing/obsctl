@@ -13,15 +13,16 @@ import (
 )
 
 type TriggerOptions struct {
-    Addrs    []string
-    Password string
-    Scene    string
-    Media    string
-    Action   string
-    FireTime time.Time
-    SpinWin  time.Duration
-    Timeout  time.Duration
-    SkewLog  bool
+    Addrs     []string
+    Password  string   // common password (fallback)
+    Passwords []string // optional: aligned with Addrs for per-connection passwords
+    Scene     string
+    Media     string
+    Action    string
+    FireTime  time.Time
+    SpinWin   time.Duration
+    Timeout   time.Duration
+    SkewLog   bool
 }
 
 func Trigger(opts TriggerOptions) error {
@@ -42,7 +43,20 @@ func Trigger(opts TriggerOptions) error {
         if a == "" {
             continue
         }
-        c, err := goobs.New(a, goobs.WithPassword(opts.Password))
+        // choose per-addr password if provided; otherwise use common password; empty means no auth
+        var pw string
+        if len(opts.Passwords) == len(opts.Addrs) {
+            pw = strings.TrimSpace(opts.Passwords[i])
+        } else {
+            pw = strings.TrimSpace(opts.Password)
+        }
+        var c *goobs.Client
+        var err error
+        if pw == "" {
+            c, err = goobs.New(a)
+        } else {
+            c, err = goobs.New(a, goobs.WithPassword(pw))
+        }
         if err != nil {
             log.Printf("接続失敗[%d]: ws://%s: %v", i, a, err)
             failed = append(failed, a)

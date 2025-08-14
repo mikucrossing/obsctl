@@ -12,7 +12,7 @@ import (
 type Config struct {
     // OBS 接続リスト
     Connections []Connection `json:"connections"`
-    // 全接続で使う共通パスワード（平文）
+    // 共通パスワード（後方互換のために残します。未使用）
     CommonPassword string `json:"common_password"`
     // Import の既定値
     ImportDefaults ImportDefaults `json:"import_defaults"`
@@ -21,9 +21,10 @@ type Config struct {
 }
 
 type Connection struct {
-    Name string `json:"name"`
-    Addr string `json:"addr"` // host:port （ws:// 不要）
-    Enabled bool `json:"enabled"`
+    Name     string `json:"name"`
+    Addr     string `json:"addr"` // host:port （ws:// 不要）
+    Enabled  bool   `json:"enabled"`
+    Password string `json:"password"` // 個別パスワード（空なら無認証）
 }
 
 type ImportDefaults struct {

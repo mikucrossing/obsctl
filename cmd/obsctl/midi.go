@@ -40,6 +40,7 @@ func runMidi(args []string) {
 
     addrs := fs.String("addrs", "127.0.0.1:4455", "OBS WebSocket のアドレスをカンマ区切り（host:port）")
     password := fs.String("password", "", "OBS WebSocket のパスワード（共通）")
+    passwords := fs.String("passwords", "", "複数接続の個別パスワード。-addrs と同じ順でカンマ区切り（数が合わない場合は無視）")
     device := fs.String("device", "", "監視する MIDI 入力デバイス名")
     channel := fs.String("channel", "", "受け付ける MIDI チャネル (1-16、カンマ区切り。未指定は全て)")
     debounce := fs.Duration("debounce", 30*time.Millisecond, "デバウンス間隔")
@@ -99,6 +100,16 @@ func runMidi(args []string) {
     log.Printf("MIDI 受信開始: device=%s", *device)
     lastAt := map[string]time.Time{}
     targets := strings.Split(*addrs, ",")
+    var pwlist []string
+    if strings.TrimSpace(*passwords) != "" {
+        pws := strings.Split(*passwords, ",")
+        if len(pws) == len(targets) {
+            for i := range pws { pws[i] = strings.TrimSpace(pws[i]) }
+            pwlist = pws
+        } else {
+            log.Printf("警告: -passwords の数 (%d) が -addrs の数 (%d) と一致しません。-password（共通）を使用します。", len(pws), len(targets))
+        }
+    }
     for ev := range events {
         if *channel != "" && !containsChannel(parseChannels(*channel), int(ev.Channel)) {
             continue
@@ -120,15 +131,16 @@ func runMidi(args []string) {
                 lastAt[key] = time.Now()
 
                 opts := obsws.TriggerOptions{
-                    Addrs:    targets,
-                    Password: *password,
-                    Scene:    scene,
-                    Media:    "",
-                    Action:   "none",
-                    FireTime: time.Now(),
-                    SpinWin:  0,
-                    Timeout:  *timeout,
-                    SkewLog:  false,
+                    Addrs:     targets,
+                    Password:  *password,
+                    Passwords: pwlist,
+                    Scene:     scene,
+                    Media:     "",
+                    Action:    "none",
+                    FireTime:  time.Now(),
+                    SpinWin:   0,
+                    Timeout:   *timeout,
+                    SkewLog:   false,
                 }
                 if err := obsws.Trigger(opts); err != nil {
                     log.Printf("シーン切替失敗: %v", err)

@@ -76,6 +76,7 @@ func usage() {
     fmt.Println("")
     fmt.Println("例:")
     fmt.Println("  obsctl trigger -addrs 127.0.0.1:4455,127.0.0.1:4456 -password ****** -scene SceneA -at 2025-08-12T01:30:00+09:00 -spinwin 2ms")
+    fmt.Println("  obsctl trigger -addrs 10.0.0.21:4455,10.0.0.22:4455 -passwords passA,passB -scene SceneA  # 個別パスワードの例")
     fmt.Println("  obsctl import -addr 127.0.0.1:4455 -password ****** -dir ./videos -loop -activate")
     fmt.Println("  obsctl midi -addrs 127.0.0.1:4455 -password ****** -device 'IAC Driver Bus 1'")
 }
@@ -89,6 +90,7 @@ func runTrigger(args []string) {
 
     addrs := fs.String("addrs", "127.0.0.1:4455,127.0.0.1:4456", "OBS WebSocket のアドレスをカンマ区切り（host:port）")
     password := fs.String("password", "", "OBS WebSocket のパスワード（共通）")
+    passwords := fs.String("passwords", "", "複数接続の個別パスワード。-addrs と同じ順でカンマ区切り（数が合わない場合は無視）")
     scene := fs.String("scene", "", "切り替えるシーン名（省略可）")
     media := fs.String("media", "", "メディア入力名（省略可）")
     action := fs.String("action", "none", "メディア操作: none|play|pause|stop|restart|resume")
@@ -117,16 +119,27 @@ func runTrigger(args []string) {
     }
 
     targets := strings.Split(*addrs, ",")
+    var pwlist []string
+    if strings.TrimSpace(*passwords) != "" {
+        pws := strings.Split(*passwords, ",")
+        if len(pws) == len(targets) {
+            for i := range pws { pws[i] = strings.TrimSpace(pws[i]) }
+            pwlist = pws
+        } else {
+            log.Printf("警告: -passwords の数 (%d) が -addrs の数 (%d) と一致しません。-password（共通）を使用します。", len(pws), len(targets))
+        }
+    }
     opts := obsws.TriggerOptions{
-        Addrs:    targets,
-        Password: *password,
-        Scene:    *scene,
-        Media:    *media,
-        Action:   *action,
-        FireTime: fireTime,
-        SpinWin:  *spinWin,
-        Timeout:  *timeout,
-        SkewLog:  *skewLog,
+        Addrs:     targets,
+        Password:  *password,
+        Passwords: pwlist,
+        Scene:     *scene,
+        Media:     *media,
+        Action:    *action,
+        FireTime:  fireTime,
+        SpinWin:   *spinWin,
+        Timeout:   *timeout,
+        SkewLog:   *skewLog,
     }
 
     if err := obsws.Trigger(opts); err != nil {
@@ -199,6 +212,7 @@ func triggerUsage() {
     // 手書きで主要なオプションを列挙
     fmt.Fprintln(os.Stderr, "  -addrs     OBSのアドレスをカンマ区切り (host:port)")
     fmt.Fprintln(os.Stderr, "  -password  パスワード（全接続共通）")
+    fmt.Fprintln(os.Stderr, "  -passwords 個別パスワードをカンマ区切り（-addrs と同順・同数）。一致しない場合は無視して -password を使用")
     fmt.Fprintln(os.Stderr, "  -scene     切り替えるシーン名")
     fmt.Fprintln(os.Stderr, "  -media     メディア入力名（現状は未サポート動作）")
     fmt.Fprintln(os.Stderr, "  -action    none|play|pause|stop|restart|resume")
@@ -232,6 +246,7 @@ func midiUsage() {
     fmt.Fprintln(os.Stderr, "\n主なオプション:")
     fmt.Fprintln(os.Stderr, "  -addrs         OBS のアドレスをカンマ区切り (host:port)")
     fmt.Fprintln(os.Stderr, "  -password      パスワード（全接続共通）")
+    fmt.Fprintln(os.Stderr, "  -passwords     個別パスワードをカンマ区切り（-addrs と同順・同数）。一致しない場合は無視して -password を使用")
     fmt.Fprintln(os.Stderr, "  -device        監視する MIDI 入力デバイス名")
     fmt.Fprintln(os.Stderr, "  -channel       受け付ける MIDI チャネル (1-16、カンマ区切り)")
     fmt.Fprintln(os.Stderr, "  -debounce      デバウンス間隔 (例: 30ms)")

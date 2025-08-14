@@ -27,9 +27,8 @@ type App struct {
     midiCancel context.CancelFunc
     midiDrv    midi.Input
     // OBS cache
-    cacheMu       sync.Mutex
-    cacheClients  map[string]*goobs.Client
-    cachePassword string
+    cacheMu      sync.Mutex
+    cacheClients map[string]*goobs.Client // key: addr+"\x00"+password
 }
 
 func NewApp() *App {
@@ -103,17 +102,15 @@ func normalizeUniqueConnectionNames(c *config.Config) {
     }
 }
 
-// TestConnections は現在の設定（Connections + CommonPassword）で接続テストを行います。
+// TestConnections は現在の設定で接続テストを行います（接続ごとのパスワード対応）。
 func (a *App) TestConnections() (map[string]string, error) {
     if len(a.cfg.Connections) == 0 {
         return nil, errors.New("接続先がありません")
     }
-    pw := strings.TrimSpace(a.cfg.CommonPassword)
-
     results := map[string]string{}
     for _, c := range a.cfg.Connections {
         addr := obsws.NormalizeObsAddr(c.Addr)
-        cli, err := openObs(addr, pw)
+        cli, err := openObs(addr, strings.TrimSpace(c.Password))
         if err != nil {
             results[c.Name] = fmt.Sprintf("NG: %v", err)
             continue
@@ -134,12 +131,10 @@ func (a *App) ListScenes() ([]string, error) {
     if len(a.cfg.Connections) == 0 {
         return nil, errors.New("接続先がありません")
     }
-    pw := strings.TrimSpace(a.cfg.CommonPassword)
-
     var inter map[string]struct{}
     for i, c := range a.cfg.Connections {
         addr := obsws.NormalizeObsAddr(c.Addr)
-        cli, err := openObs(addr, pw)
+        cli, err := openObs(addr, strings.TrimSpace(c.Password))
         if err != nil {
             return nil, fmt.Errorf("%s への接続に失敗: %w", c.Name, err)
         }
@@ -170,12 +165,11 @@ func (a *App) ListScenes() ([]string, error) {
 // ListScenesFor は指定接続名のシーン一覧を返す。
 func (a *App) ListScenesFor(connectionName string) ([]string, error) {
     if strings.TrimSpace(connectionName) == "" { return nil, errors.New("接続名を指定してください") }
-    pw := strings.TrimSpace(a.cfg.CommonPassword)
     for _, c := range a.cfg.Connections {
         if !c.Enabled { continue }
         if c.Name == connectionName {
             addr := obsws.NormalizeObsAddr(c.Addr)
-            cli, err := a.getClientCached(addr, pw)
+            cli, err := a.getClientCached(addr, strings.TrimSpace(c.Password))
             if err != nil { return nil, fmt.Errorf("%s への接続に失敗: %w", c.Name, err) }
             lst, err := cli.Scenes.GetSceneList(nil)
             if err != nil { return nil, fmt.Errorf("%s のシーン一覧取得に失敗: %w", c.Name, err) }
@@ -193,11 +187,9 @@ func (a *App) TriggerScene(scene string) error {
     scene = strings.TrimSpace(scene)
     if scene == "" { return errors.New("シーン名が空です") }
     if len(a.cfg.Connections) == 0 { return errors.New("接続先がありません") }
-    pw := strings.TrimSpace(a.cfg.CommonPassword)
-
-    addrs := make([]string, 0, len(a.cfg.Connections))
-    for _, c := range a.cfg.Connections { addrs = append(addrs, c.Addr) }
-    go func(){ _ = a.emitLog("info", fmt.Sprintf("シーン切替: %s", scene)); if err := a.setSceneCached(addrs, pw, scene); err != nil { _ = a.emitLog("error", fmt.Sprintf("切替失敗: %v", err)) } else { _ = a.emitLog("info", "切替完了") } }()
+    var pairs []struct{ addr, pw string }
+    for _, c := range a.cfg.Connections { pairs = append(pairs, struct{ addr, pw string }{addr: c.Addr, pw: strings.TrimSpace(c.Password)}) }
+    go func(){ _ = a.emitLog("info", fmt.Sprintf("シーン切替: %s", scene)); if err := a.setSceneCachedPairs(pairs, scene); err != nil { _ = a.emitLog("error", fmt.Sprintf("切替失敗: %v", err)) } else { _ = a.emitLog("info", "切替完了") } }()
     return nil
 }
 
@@ -291,29 +283,26 @@ func (a *App) OpenExternalURL(url string) error {
 // Cached connections
 func (a *App) getClientCached(addr, pw string) (*goobs.Client, error) {
     a.cacheMu.Lock(); defer a.cacheMu.Unlock()
-    if a.cachePassword != pw {
-        for _, c := range a.cacheClients { _ = c.Disconnect() }
-        a.cacheClients = map[string]*goobs.Client{}
-        a.cachePassword = pw
-    }
-    if c, ok := a.cacheClients[addr]; ok { return c, nil }
+    key := addr + "\x00" + strings.TrimSpace(pw)
+    if c, ok := a.cacheClients[key]; ok { return c, nil }
     var c *goobs.Client
     var err error
     if strings.TrimSpace(pw) == "" { c, err = goobs.New(addr) } else { c, err = goobs.New(addr, goobs.WithPassword(pw)) }
     if err != nil { return nil, err }
-    a.cacheClients[addr] = c
+    a.cacheClients[key] = c
     return c, nil
 }
 
-func (a *App) setSceneCached(addrs []string, pw, scene string) error {
-    for _, raw := range addrs {
-        addr := obsws.NormalizeObsAddr(strings.TrimSpace(raw)); if addr == "" { continue }
-        cli, err := a.getClientCached(addr, pw)
+func (a *App) setSceneCachedPairs(pairs []struct{ addr, pw string }, scene string) error {
+    for _, p := range pairs {
+        addr := obsws.NormalizeObsAddr(strings.TrimSpace(p.addr)); if addr == "" { continue }
+        cli, err := a.getClientCached(addr, p.pw)
         if err != nil { return fmt.Errorf("%s 接続失敗: %w", addr, err) }
         _, err = cli.Scenes.SetCurrentProgramScene((&scenes.SetCurrentProgramSceneParams{}).WithSceneName(scene))
         if err != nil {
-            a.cacheMu.Lock(); if old, ok := a.cacheClients[addr]; ok { _ = old.Disconnect(); delete(a.cacheClients, addr) }; a.cacheMu.Unlock()
-            cli2, err2 := a.getClientCached(addr, pw)
+            key := addr + "\x00" + strings.TrimSpace(p.pw)
+            a.cacheMu.Lock(); if old, ok := a.cacheClients[key]; ok { _ = old.Disconnect(); delete(a.cacheClients, key) }; a.cacheMu.Unlock()
+            cli2, err2 := a.getClientCached(addr, p.pw)
             if err2 != nil { return fmt.Errorf("%s 再接続失敗: %w", addr, err2) }
             if _, err3 := cli2.Scenes.SetCurrentProgramScene((&scenes.SetCurrentProgramSceneParams{}).WithSceneName(scene)); err3 != nil { return fmt.Errorf("%s 切替失敗: %w", addr, err3) }
         }
@@ -363,9 +352,10 @@ func (a *App) MidiStart() error {
                 scene, ok := noteMap[key]; if !ok { continue }
                 if t, ok2 := lastAt[key]; ok2 { if time.Since(t) < ratelimit { continue } }
                 lastAt[key] = time.Now()
-                addrs := make([]string, 0, len(a.cfg.Connections)); for _, c := range a.cfg.Connections { if c.Enabled { addrs = append(addrs, c.Addr) } }
-                if len(addrs) == 0 { _ = a.emitLog("error", "有効な接続がありません"); continue }
-                if err := a.setSceneCached(addrs, strings.TrimSpace(a.cfg.CommonPassword), scene); err != nil { _ = a.emitLog("error", fmt.Sprintf("MIDI切替失敗: %v", err)) } else { _ = a.emitLog("info", fmt.Sprintf("MIDI切替: %s (CH%d Note%d)", scene, ev.Channel, ev.Data1)) }
+                var pairs []struct{ addr, pw string }
+                for _, c := range a.cfg.Connections { if c.Enabled { pairs = append(pairs, struct{ addr, pw string }{addr: c.Addr, pw: strings.TrimSpace(c.Password)}) } }
+                if len(pairs) == 0 { _ = a.emitLog("error", "有効な接続がありません"); continue }
+                if err := a.setSceneCachedPairs(pairs, scene); err != nil { _ = a.emitLog("error", fmt.Sprintf("MIDI切替失敗: %v", err)) } else { _ = a.emitLog("info", fmt.Sprintf("MIDI切替: %s (CH%d Note%d)", scene, ev.Channel, ev.Data1)) }
             }
         }
     }()
