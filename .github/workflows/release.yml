@@ -202,13 +202,26 @@ jobs:
 
           # 生成物と必要DLLを dist に集約
           Copy-Item build\bin\obsctl-gui.exe dist\obsctl-gui_windows_amd64_midi_native.exe -Force
-          $mingwBin = 'C:\tools\mingw64\bin'
+          # 実際に使用している MinGW の bin を検出（確実にDLLを拾う）
           $dlls = @()
-          foreach ($n in 'libstdc++-6.dll','libgcc_s_seh-1.dll','libwinpthread-1.dll') {
+          try {
+            $gcc = (Get-Command x86_64-w64-mingw32-g++.exe -ErrorAction Stop).Source
+            $mingwBin = Split-Path -Parent $gcc
+          } catch {
+            $mingwBin = 'C:\tools\mingw64\bin'
+          }
+          $names = @('libstdc++-6.dll','libgcc_s_seh-1.dll','libwinpthread-1.dll')
+          foreach ($n in $names) {
             $src = Join-Path $mingwBin $n
+            if (-not (Test-Path $src -PathType Leaf)) {
+              # Fallback: 広めに探索
+              $cand = Get-ChildItem -Path $mingwBin,'C:\tools','C:\msys64','C:\ProgramData\chocolatey' -Recurse -Filter $n -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($cand) { $src = $cand.FullName }
+            }
             if (Test-Path $src -PathType Leaf) {
-              Copy-Item $src (Join-Path 'dist' $n) -Force
-              $dlls += (Join-Path 'dist' $n)
+              $dest = Join-Path 'dist' $n
+              Copy-Item $src $dest -Force
+              $dlls += $dest
             }
           }
 
