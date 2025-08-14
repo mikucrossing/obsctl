@@ -5,9 +5,19 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      only_job:
+        description: "Run only a specific job (manual)"
+        type: choice
+        required: false
+        default: all
+        options:
+          - all
+          - windows-gui
 
 jobs:
   build-midi-native:
+    if: github.event_name != 'workflow_dispatch' || inputs.only_job == 'all'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -137,6 +147,7 @@ jobs:
           path: dist/**
 
   build-gui:
+    if: github.event_name != 'workflow_dispatch' || inputs.only_job == 'all' || (inputs.only_job == 'windows-gui' && matrix.os == 'windows-latest')
     name: Build GUI (Wails + midi_native)
     runs-on: ${{ matrix.os }}
     strategy:
