@@ -103,8 +103,8 @@ Gatekeeper対策（署名/公証）は別途。
 
 ### MIDI（任意）
 
-1. 右ペイン「MIDI」でデバイスを選択（更新ボタンで再取得）
-2. 既存のマッピングがあれば編集／なければ「自動生成」を利用可能
+1. 右ペイン「シーン 自動切替（MIDI）」で、上段の「MIDI」セクションからデバイスを選択（更新ボタンで再取得）
+2. 下段の「自動生成」セクションで、必要に応じてマッピングを自動生成／編集
    - 接続先（1つ）・チャネル（例: 1）・開始ノート（例: 36）を選び「生成して置換」を押すと、
      選んだOBSのシーン一覧から `ch:note=Scene` の行が自動生成されます（CLIの `obsctl midi gen-json` 相当）。
 3. 「MIDI設定を保存」→「開始」で受信を開始。Note Onで一致するシーンに切替されます。
@@ -125,3 +125,31 @@ Gatekeeper対策（署名/公証）は別途。
 - カメラでQR読み取り: BarcodeDetector が使える環境ではネイティブAPIを、未対応環境では同梱の jsQR ライブラリを用いたオフライン解析で読み取ります。画像ファイルをドラッグ＆ドロップしての解析も可能です。
 - 設定ファイル: `~/.config/obsctl-gui/config.json`（接続/共通パスワード/MIDI設定/Import既定値）。
 - パスワード未設定のOBSにも接続自体は試行します（OBS側が必須なら認証エラーになります）。
+
+
+## アイコン（Font Awesome）
+
+本GUIのフロントエンドでは、アイコンとして Font Awesome Free (v6) をオフライン環境でも動作するようローカルに同梱しています（CDNは使用しません）。
+
+- 参照ファイル: `cmd/obsctl-gui/frontend/index.html`
+- 同梱パス: `cmd/obsctl-gui/frontend/vendor/fontawesome/`
+  - `css/all.min.css`（プレースホルダー: まずは404回避用の最小CSSを同梱。必要に応じて本物のCSSに差し替えてください）
+  - `webfonts/`（必要に応じて配置。`fa-*-*.woff2` など）
+
+使い方の例:
+
+```html
+<i class="fa-solid fa-plus"></i>
+<i class="fa-regular fa-circle-question"></i>
+<i class="fa-brands fa-github"></i>
+```
+
+サイズや色はCSSで制御できます（例: `style="font-size:18px;color:#60a5fa;"`）。
+
+###（任意）完全オフライン用に実フォントを同梱する手順
+1. Font Awesome Free v6.x の配布物を取得（ネット接続可能な環境でOK）。
+2. `all.min.css` を `cmd/obsctl-gui/frontend/vendor/fontawesome/css/all.min.css` に上書き。
+3. `webfonts/` ディレクトリ（`fa-solid-900.woff2` など）を `cmd/obsctl-gui/frontend/vendor/fontawesome/webfonts/` に配置。
+4. `all.min.css` 内の `@font-face` が `../webfonts/` を参照していることを確認。
+
+これでネットワークが無い環境でもアイコンが表示されます。
