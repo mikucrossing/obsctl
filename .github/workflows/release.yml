@@ -35,11 +35,11 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y build-essential pkg-config libasound2-dev
           fi
-      - name: Install LLVM toolchain (Windows)
+      - name: Install MinGW-w64 (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          choco install -y llvm
+          choco install -y mingw
       - name: Build Linux (midi_native)
         if: runner.os == 'Linux'
         shell: bash
@@ -78,8 +78,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $env:CC = "clang"
-          $env:CXX = "clang++"
+          $env:CC = "x86_64-w64-mingw32-gcc"
+          $env:CXX = "x86_64-w64-mingw32-g++"
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
@@ -89,8 +89,9 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          $env:CC = "clang"
-          $env:CXX = "clang++"
+          # If aarch64 MinGW is present, use it; otherwise this step may fail.
+          $env:CC = "aarch64-w64-mingw32-gcc"
+          $env:CXX = "aarch64-w64-mingw32-g++"
           $env:CGO_ENABLED = "1"
           $env:GOOS = "windows"
           $env:GOARCH = "arm64"
