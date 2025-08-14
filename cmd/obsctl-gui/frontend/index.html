@@ -144,7 +144,7 @@
         fPort.append(lPort, port)
         const fPw = el('div', {class:'field'})
         const lPw = el('label', {}, 'パスワード')
-        const pw = el('input', {type:'password', placeholder:'必要なら入力', value: c.password || ''})
+        const pw = el('input', {type:'password', placeholder:'オプション（認証無効の場合は空欄）', value: c.password || ''})
         fPw.append(lPw, pw)
         fields.append(fHost, fPort, fPw)
 
