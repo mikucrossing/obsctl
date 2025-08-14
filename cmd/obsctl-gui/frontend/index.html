@@ -781,7 +781,10 @@
       <div id="view-midi" class="hidden" style="margin-top:16px;">
         <!-- MIDI 基本設定 -->
         <div class="card">
-          <h3>MIDI</h3>
+          <h3>シーン自動切替 MIDI接続</h3>
+          <div class="row">
+              <small class="muted">MIDI機器でOBSのシーンを切り替えます（Note On の note番号で識別 velocityは1以上に）</small>
+          </div>
           <div class="grid2">
             <div>デバイス: <select id="midi-device"></select> <button onclick="refreshMidiDevices()">更新</button></div>
             <div>チャネル: <input id="midi-channel" placeholder="例: 1,2 (未指定は全て)" /></div>
@@ -796,9 +799,12 @@
           </div>
         </div>
 
-        <!-- 自動生成／マッピング -->
+        <!-- 自動生成 -->
         <div class="card" style="margin-top:16px;">
-          <h3>自動生成</h3>
+          <h3>MIDIマッピング自動生成</h3>
+          <div class="row">
+            <small class="muted">OBSのシーン一覧からMIDIのNoteを自動設定します</small>
+          </div>
           <div class="row">
             <span>接続先</span>
             <select id="midi-gen-conn"></select>
@@ -808,6 +814,14 @@
             <input id="midi-gen-start" value="36" style="width:60px" />
             <button onclick="generateMidiMappings()">生成して置換</button>
           </div>
+        </div>
+
+        <!-- 一覧 -->
+        <div class="card" style="margin-top:16px;">
+            <h3>MIDI/OBSシーンマッピング</h3>
+            <div class="row">
+                <small class="muted">OBSのシーンとMIDIのNoteの対応表</small>
+            </div>
           <div class="row">
             <strong>表示:</strong>
             <button onclick="setMappingMode('table')">表</button>
