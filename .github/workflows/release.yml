@@ -169,7 +169,10 @@ jobs:
       - name: Install MinGW (Windows)
         if: runner.os == 'Windows'
         shell: powershell
-        run: choco install -y mingw
+        run: |
+          choco install -y mingw
+          # MinGW の bin を次ステップ以降の PATH に追加
+          Add-Content -Path $env:GITHUB_PATH -Value 'C:\tools\mingw64\bin'
       - name: Build GUI (macOS Universal)
         if: runner.os == 'macOS'
         shell: bash
@@ -192,9 +195,26 @@ jobs:
           $env:CC = "x86_64-w64-mingw32-gcc"
           $env:CXX = "x86_64-w64-mingw32-g++"
           $env:CGO_ENABLED = "1"
-          wails build --clean -platform windows/amd64 -tags midi_native
+          # C++ ランタイムの静的リンクを試行
+          $env:CGO_LDFLAGS = "-static-libstdc++ -static-libgcc"
+          $ld = '-s -w -linkmode=external -extldflags "-static-libstdc++ -static-libgcc"'
+          wails build --clean -platform windows/amd64 -tags midi_native -ldflags $ld
+
+          # 生成物と必要DLLを dist に集約
           Copy-Item build\bin\obsctl-gui.exe dist\obsctl-gui_windows_amd64_midi_native.exe -Force
-          Compress-Archive -Path dist\obsctl-gui_windows_amd64_midi_native.exe -DestinationPath dist\obsctl-gui_windows_amd64_midi_native.zip -Force
+          $mingwBin = 'C:\tools\mingw64\bin'
+          $dlls = @()
+          foreach ($n in 'libstdc++-6.dll','libgcc_s_seh-1.dll','libwinpthread-1.dll') {
+            $src = Join-Path $mingwBin $n
+            if (Test-Path $src -PathType Leaf) {
+              Copy-Item $src (Join-Path 'dist' $n) -Force
+              $dlls += (Join-Path 'dist' $n)
+            }
+          }
+
+          # 同梱物を ZIP 化（DLLが存在すれば一緒に圧縮）
+          $files = @('dist/obsctl-gui_windows_amd64_midi_native.exe') + $dlls
+          Compress-Archive -Path $files -DestinationPath dist/obsctl-gui_windows_amd64_midi_native.zip -Force
           Remove-Item dist\obsctl-gui_windows_amd64_midi_native.exe -Force
       - uses: actions/upload-artifact@v4
         with:
