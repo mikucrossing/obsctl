@@ -694,39 +694,46 @@
         <div class="row"><button onclick="doImport()">インポート実行</button></div>
       </div>
 
-      <div id="view-midi" class="card hidden" style="margin-top:16px;">
-        <h3>MIDI</h3>
-        <div class="grid2">
-          <div>デバイス: <select id="midi-device"></select> <button onclick="refreshMidiDevices()">更新</button></div>
-          <div>チャネル: <input id="midi-channel" placeholder="例: 1,2 (未指定は全て)" /></div>
-          <div>デバウンス: <input id="midi-debounce" placeholder="30ms" /></div>
-          <div>レート制限: <input id="midi-ratelimit" placeholder="50ms" /></div>
+      <div id="view-midi" class="hidden" style="margin-top:16px;">
+        <!-- MIDI 基本設定 -->
+        <div class="card">
+          <h3>MIDI</h3>
+          <div class="grid2">
+            <div>デバイス: <select id="midi-device"></select> <button onclick="refreshMidiDevices()">更新</button></div>
+            <div>チャネル: <input id="midi-channel" placeholder="例: 1,2 (未指定は全て)" /></div>
+            <div>デバウンス: <input id="midi-debounce" placeholder="30ms" /></div>
+            <div>レート制限: <input id="midi-ratelimit" placeholder="50ms" /></div>
+          </div>
+          <div class="row">
+            <button onclick="startMidi()">開始</button>
+            <button onclick="stopMidi()">停止</button>
+            <div style="flex:1"></div>
+            <button onclick="openMidiTest()">WebMIDIテストページを開く</button>
+          </div>
         </div>
-        <div class="row">
-          <button onclick="startMidi()">開始</button>
-          <button onclick="stopMidi()">停止</button>
-          <div style="flex:1"></div>
-          <button onclick="openMidiTest()">WebMIDIテストページを開く</button>
-        </div>
-        <div class="row">
-          <strong>自動生成:</strong>
-          <span>接続先</span>
-          <select id="midi-gen-conn"></select>
-          <span>チャネル</span>
-          <input id="midi-gen-channel" value="1" style="width:60px" />
-          <span>開始ノート</span>
-          <input id="midi-gen-start" value="36" style="width:60px" />
-          <button onclick="generateMidiMappings()">生成して置換</button>
-        </div>
-        <div class="row">
-          <strong>表示:</strong>
-          <button onclick="setMappingMode('table')">表</button>
-          <button onclick="setMappingMode('text')">テキスト</button>
-          <span class="muted">（保存時はどちらの表示でもOK）</span>
-        </div>
-        <div id="mapping-container"></div>
-        <div class="row">
-          <button onclick="saveMidi()">MIDI設定を保存</button>
+
+        <!-- 自動生成／マッピング -->
+        <div class="card" style="margin-top:16px;">
+          <h3>自動生成</h3>
+          <div class="row">
+            <span>接続先</span>
+            <select id="midi-gen-conn"></select>
+            <span>チャネル</span>
+            <input id="midi-gen-channel" value="1" style="width:60px" />
+            <span>開始ノート</span>
+            <input id="midi-gen-start" value="36" style="width:60px" />
+            <button onclick="generateMidiMappings()">生成して置換</button>
+          </div>
+          <div class="row">
+            <strong>表示:</strong>
+            <button onclick="setMappingMode('table')">表</button>
+            <button onclick="setMappingMode('text')">テキスト</button>
+            <span class="muted">（保存時はどちらの表示でもOK）</span>
+          </div>
+          <div id="mapping-container"></div>
+          <div class="row">
+            <button onclick="saveMidi()">MIDI設定を保存</button>
+          </div>
         </div>
       </div>
 
