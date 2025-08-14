@@ -195,9 +195,9 @@ jobs:
           $env:CC = "x86_64-w64-mingw32-gcc"
           $env:CXX = "x86_64-w64-mingw32-g++"
           $env:CGO_ENABLED = "1"
-          # C++ ランタイムの静的リンクを試行
-          $env:CGO_LDFLAGS = "-static-libstdc++ -static-libgcc"
-          $ld = '-s -w -linkmode=external -extldflags "-static-libstdc++ -static-libgcc"'
+          # C++/Winpthread を静的リンク（DLL不要化を試行）
+          $env:CGO_LDFLAGS = "-static-libstdc++ -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+          $ld = '-s -w -linkmode=external -extldflags "-static-libstdc++ -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"'
           wails build --clean -platform windows/amd64 -tags midi_native -ldflags $ld
 
           # 生成物と必要DLLを dist に集約
