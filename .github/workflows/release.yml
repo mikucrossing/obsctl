@@ -113,7 +113,7 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: binaries-midi-native
+          name: binaries-midi-native-${{ runner.os }}
           path: dist/**
 
   release:
