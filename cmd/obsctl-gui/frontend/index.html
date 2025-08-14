@@ -131,7 +131,7 @@
         const slider = el('span', {class:'slider'})
         sw.append(enabled, slider)
         const del = el('button', {class:'btn-ghost'}, '削除')
-        del.onclick = ()=>{ currentConfig.connections.splice(idx,1); renderConnections() }
+        del.onclick = ()=>{ currentConfig.connections.splice(idx,1); renderConnections(); scheduleAutoSave() }
         head.append(name, spacer, sw, del)
 
         const hp = splitAddr(c.addr||'')
