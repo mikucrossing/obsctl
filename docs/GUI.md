@@ -67,6 +67,28 @@ wails build -platform darwin/universal -o obsctl-gui.app
 
 Gatekeeper対策（署名/公証）は別途。
 
+## macOSのGatekeeper警告
+
+macの場合、初回起動時に「開発元を確認できないため開けません」等の警告が表示されます。
+
+### 設定アプリを使用する方法
+1. Finderでアプリを右クリック→「開く」
+2. mac設定アプリ「プライバシー」
+3. 「このまま開く」を選択
+
+初回のみで以後は通常起動できます  
+詳しくは https://support.apple.com/ja-jp/102445#openanyway を参照してください。
+
+### ターミナルを使用する方法
+アプリケーション dirに配置後、下記コマンド実行  
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/obsctl.app"
+  open "/Applications/obsctl.app"
+  ```
+### ターミナル経由でのインストール
+ `scripts/install-macos.sh` を使うと、最新リリースのzipをターミナルから取得→解凍→`~/Applications`へ配置→（必要なら）隔離属性削除まで自動化します。
+
+
 ### MIDI 対応ビルド
 
 ネイティブMIDI入力を有効にするにはビルドタグ `midi_native` が必要です。
