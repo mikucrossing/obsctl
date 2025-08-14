@@ -2,6 +2,8 @@
 
 OBS WebSocket を操作するCLIツールです。複数OBSへの同時シーン切替と、動画ディレクトリからのシーン+Media Source 一括作成を提供します。
 
+GUI版（Windows/macOS）は Wails ベースのデスクトップアプリを同梱しています。詳細は `docs/GUI.md` を参照してください。
+
 ## クイックスタート
 
 ```

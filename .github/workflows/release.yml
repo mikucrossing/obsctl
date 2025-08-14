@@ -136,8 +136,66 @@ jobs:
           name: binaries-midi-native-${{ runner.os }}
           path: dist/**
 
+  build-gui:
+    name: Build GUI (Wails + midi_native)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Wails CLI
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Prepare env
+        shell: bash
+        run: |
+          mkdir -p dist
+          VERSION=${GITHUB_REF_NAME:-dev}
+          VERSION=${VERSION#v}
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "COMMIT=$COMMIT" >> $GITHUB_ENV
+          echo "DATE=$DATE" >> $GITHUB_ENV
+      - name: Install MinGW (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: choco install -y mingw
+      - name: Build GUI (macOS Universal)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -eux
+          wails build --clean -platform darwin/universal -tags midi_native
+          cd build/bin
+          zip -9 ../../dist/obsctl-gui_darwin_universal_midi_native.zip obsctl-gui.app -r
+      - name: Build GUI (Windows amd64)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:CC = "x86_64-w64-mingw32-gcc"
+          $env:CXX = "x86_64-w64-mingw32-g++"
+          $env:CGO_ENABLED = "1"
+          wails build --clean -platform windows/amd64 -tags midi_native
+          Copy-Item build\bin\obsctl-gui.exe dist\obsctl-gui_windows_amd64_midi_native.exe -Force
+          Compress-Archive -Path dist\obsctl-gui_windows_amd64_midi_native.exe -DestinationPath dist\obsctl-gui_windows_amd64_midi_native.zip -Force
+          Remove-Item dist\obsctl-gui_windows_amd64_midi_native.exe -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gui-midi-native-${{ runner.os }}
+          path: dist/**
+
   release:
-    needs: [build-midi-native]
+    needs: [build-midi-native, build-gui]
     runs-on: ubuntu-latest
     permissions:
       contents: write

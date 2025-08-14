@@ -27,6 +27,17 @@ obsctl <command> [options]
 - `import`: ディレクトリからシーン+Media Source を生成
 - `version`: バージョン情報を表示
 
+### GUI 版（Windows/macOS）
+
+Wails ベースのデスクトップGUIを同梱しています。接続管理／シーン一覧のクリック切替／インポート／（任意で）MIDIに対応。
+
+- 開発起動: `wails dev`
+- 代替（CLIのみ）: `go run -tags=dev .`
+- 配布ビルド: `wails build`
+- MIDI対応で起動/ビルドするには `-tags midi_native` を付けてください。
+
+詳細は `docs/GUI.md` を参照してください。
+
 +### MIDI 連携
 
 `obsctl midi` サブコマンドで、MIDI 入力イベントに応じてシーン切替を行う機能を提供しています。

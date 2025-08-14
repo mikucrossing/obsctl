@@ -1,0 +1,14 @@
+{
+  "$schema": "https://wails.io/schemas/v2.json",
+  "name": "obsctl GUI",
+  "description": "OBS WebSocket controller GUI",
+  "version": "0.1.0",
+  "author": { "name": "obsctl", "email": "" },
+  "outputfilename": "obsctl-gui",
+  "frontend": {
+    "dir": "cmd/obsctl-gui/frontend",
+    "install": "",
+    "build": "",
+    "devServerURL": ""
+  }
+}

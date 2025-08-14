@@ -17,7 +17,7 @@
 - 事前処理: `go test ./...` を実行し、バージョン情報（`version/commit/date`）を `-ldflags` で埋め込み
 - 依存の導入:
   - Linux: `build-essential`, `pkg-config`, `libasound2-dev`
-  - Windows: LLVM/clang（Chocolatey `llvm`）
+  - Windows: MinGW-w64（Chocolatey `mingw`）＋ ARM64 向けに MSYS2 の `clangarm64` ツールチェーン（`msys2/setup-msys2@v2`）
 - ビルド方針: すべて cgo 有効＋ビルドタグ `midi_native`
   - macOS: `arm64`/`amd64` をビルド後、`lipo` でユニバーサル化
   - Windows: `amd64` をビルド、`arm64` は可能な範囲で試行（失敗してもリリースは継続）

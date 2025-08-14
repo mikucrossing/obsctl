@@ -1,6 +1,6 @@
 # ビルドガイド（Windows / macOS / Linux）
 
-obsctl の配布用バイナリを作るための手順です。Windows 向けビルド、Linux 向けビルド、そして macOS のユニバーサル（amd64+arm64）バイナリの作り方をまとめています。
+obsctl の配布用バイナリを作る手順です。Windows / Linux / macOS（ユニバーサル含む）のビルド方法をまとめています。
 
 クイックに全プラットフォームをビルドする場合は、リポジトリ同梱の以下を利用できます。
 
@@ -9,10 +9,10 @@ obsctl の配布用バイナリを作るための手順です。Windows 向け�
 
 ## 前提
 
-- Go 1.23 以上（`go.mod` は `toolchain go1.24.6`）
-- OBS 29+ かつ obs-websocket v5 系での動作を想定
-- 依存は純 Go（cgo 不要）。クロスコンパイルは基本 `CGO_ENABLED=0` でOK
+- Go 1.24 以上（`go.mod` は `go 1.24.2` / `toolchain go1.24.6`）
+- 依存は基本的に純 Go（cgo 不要）。クロスコンパイルは `CGO_ENABLED=0` でOK
 - mac のユニバーサル化には macOS 上で `lipo` が必要（Xcode Command Line Tools）
+- `midi_native` タグでビルドする場合のみ cgo を有効化し、Linux では `build-essential pkg-config libasound2-dev` が必要（macOS は標準の CoreMIDI を使用）
 
 ## バージョン情報の埋め込み
 
@@ -90,10 +90,3 @@ lipo -info dist/obsctl_darwin_universal
 3) 署名/公証（必要に応じて）
 
 配布する場合は組織のポリシーに従って `codesign` や Apple 公証を実施してください。
-
-## よくある注意
-
-- アドレスは `host:port` 形式で指定（`ws://`/`wss://` は付けない。付けても自動で除去されます）。
-- Windows パスにスペースがある場合は二重引用符で囲む（例: `-dir "C:\\My Videos"`）。
-- `import` は再帰走査なし。対象拡張子は `.mp4 .mov .mkv .webm`。
-- すべての OS で OBS のファイアウォール許可（デフォルト 4455）とパスワード設定を確認。
