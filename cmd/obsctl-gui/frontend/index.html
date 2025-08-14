@@ -703,6 +703,9 @@
           <div>レート制限: <input id="midi-ratelimit" placeholder="50ms" /></div>
         </div>
         <div class="row">
+          <button onclick="startMidi()">開始</button>
+          <button onclick="stopMidi()">停止</button>
+          <div style="flex:1"></div>
           <button onclick="openMidiTest()">WebMIDIテストページを開く</button>
         </div>
         <div class="row">
@@ -724,8 +727,6 @@
         <div id="mapping-container"></div>
         <div class="row">
           <button onclick="saveMidi()">MIDI設定を保存</button>
-          <button onclick="startMidi()">開始</button>
-          <button onclick="stopMidi()">停止</button>
         </div>
       </div>
 
