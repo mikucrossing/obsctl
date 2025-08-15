@@ -147,7 +147,7 @@ jobs:
           path: dist/**
 
   build-gui:
-    if: github.event_name != 'workflow_dispatch' || inputs.only_job == 'all' || (inputs.only_job == 'windows-gui' && matrix.os == 'windows-latest')
+    if: github.event_name != 'workflow_dispatch' || inputs.only_job == 'all' || inputs.only_job == 'windows-gui'
     name: Build GUI (Wails + midi_native)
     runs-on: ${{ matrix.os }}
     strategy:
