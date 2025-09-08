@@ -127,6 +127,14 @@
     function $(q){ return document.querySelector(q) }
     function el(name, attrs={}, text){ const e=document.createElement(name); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); if(text) e.textContent=text; return e }
 
+    function midiNoteName(num){
+      const names=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+      num = parseInt(num,10)
+      if(!Number.isFinite(num) || num<0 || num>127) return ''
+      const octave = Math.floor(num/12) - 2
+      return `${names[num%12]}${octave}`
+    }
+
     // Local runtime flag (fallback when backend methods are not bound by Wails)
     let __midiRunningFlag = false
 
@@ -649,7 +657,11 @@
       mappingRows.forEach((row,idx)=>{
         const tr=el('tr')
         const tdCh=el('td'); const inCh=el('input',{type:'number',min:'1',max:'16',value:String(row.ch||1)}); inCh.onchange=()=>{row.ch=parseInt(inCh.value||'1',10)||1}; tdCh.append(inCh)
-        const tdNote=el('td'); const inNote=el('input',{type:'number',min:'0',max:'127',value:String(row.note||0)}); inNote.onchange=()=>{row.note=parseInt(inNote.value||'0',10)||0}; tdNote.append(inNote)
+        const tdNote=el('td');
+        const inNote=el('input',{type:'number',min:'0',max:'127',value:String(row.note||0)});
+        const lblNote=el('span',{class:'muted',style:'margin-left:4px'},midiNoteName(row.note||0))
+        inNote.oninput=()=>{row.note=parseInt(inNote.value||'0',10)||0; lblNote.textContent=midiNoteName(row.note)}
+        tdNote.append(inNote,lblNote)
         const tdScene=el('td'); const inScene=el('input',{type:'text',value:row.scene||''}); inScene.oninput=()=>{row.scene=inScene.value}; tdScene.append(inScene)
         const tdAct=el('td'); const del=el('button',{},'削除'); del.onclick=()=>{mappingRows.splice(idx,1); renderMapping()}; tdAct.append(del)
         tr.append(tdCh,tdNote,tdScene,tdAct); tbody.append(tr)
@@ -672,6 +684,12 @@
         })
       }
       loadConfig(); loadMidi();
+      const startInput=$('#midi-gen-start'), startName=$('#midi-gen-start-name')
+      if(startInput && startName){
+        const updateStart=()=>{ startName.textContent=midiNoteName(parseInt(startInput.value||'0',10)) }
+        startInput.addEventListener('input',updateStart)
+        updateStart()
+      }
       setView('connections')
       // 初回と定期的にステータス更新
       try{ updateStatusbar() }catch(_){ }
@@ -812,7 +830,7 @@
             <span>チャネル</span>
             <input id="midi-gen-channel" value="1" style="width:60px" />
             <span>開始ノート</span>
-            <input id="midi-gen-start" value="36" style="width:60px" />
+            <input id="midi-gen-start" value="36" style="width:60px" /> <span id="midi-gen-start-name" class="muted" style="margin-left:4px"></span>
             <button onclick="generateMidiMappings()">生成して置換</button>
           </div>
         </div>
