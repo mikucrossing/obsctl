@@ -80,6 +80,16 @@
     .icon-btn img { width: 18px; height: 18px; opacity: 0.9; }
     /* Slightly larger icon variant */
     .icon-btn img.lg { width: 20px; height: 20px; }
+    /* Help icon ("?" circle) */
+    .help-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border:1px solid var(--muted); border-radius:50%; font-size:11px; line-height:1; color: var(--muted); cursor: pointer; margin-left:6px; }
+    .help-icon:hover { border-color: var(--text); color: var(--text); }
+    /* Popover for in-app help */
+    .popover { position: fixed; z-index: 2000; background: rgba(15,23,42,0.98); color: var(--text); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px 12px; max-width: min(92vw, 520px); box-shadow: 0 6px 28px rgba(0,0,0,0.5) }
+    .popover h4 { margin: 0 0 6px 0; font-size: 13px; color: var(--text) }
+    .popover p { margin: 6px 0; font-size: 12px; color: var(--muted) }
+    .popover .muted { color: var(--muted) }
+    .popover .close-row { display:flex; justify-content:flex-end; margin-top:8px }
+    .popover .close-row button { height: 28px }
     /* QR overlay */
     .qr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: grid; place-items: center; z-index: 1000; }
     .qr-modal { background: rgba(15,23,42,0.9); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px; width: min(92vw, 520px); }
@@ -127,12 +137,80 @@
     function $(q){ return document.querySelector(q) }
     function el(name, attrs={}, text){ const e=document.createElement(name); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); if(text) e.textContent=text; return e }
 
+    // 音階表記モード: 'yamaha' (C3) / 'spn' (C4)
+    let noteNameMode = (typeof localStorage!=='undefined' && localStorage.getItem('noteNameMode')) || 'yamaha'
     function midiNoteName(num){
       const names=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
       num = parseInt(num,10)
       if(!Number.isFinite(num) || num<0 || num>127) return ''
-      const octave = Math.floor(num/12) - 2
+      const base = (noteNameMode === 'spn') ? -1 : -2 // spn: middle C=C4, yamaha: middle C=C3
+      const octave = Math.floor(num/12) + base
       return `${names[num%12]}${octave}`
+    }
+
+    function getNoteNameHelpHtml(){
+      const yamahaList = 'YAMAHA, Apple(Logic/GarageBand), Ableton, Bitwig, Studio One, Cubase, Reason, Renoise, Native Instruments, iZotope, Arturia, UVI, Xfer など'
+      const spnList = 'KORG, Roland, CASIO, Kawai, Moog, Image-Line(ピアノロール以外), Spectrasonics, FabFilter, MeldaProduction, Celemony, Antares, kiloHearts, Voxengo など'
+      return `
+        <h4>音階表記の違いについて</h4>
+        <p>Note名 + オクターブの表記には流派があります。middle C(真ん中のド)の扱いが異なるため、Note名のオクターブ数字が1つずれることがあります。</p>
+        <p><strong>ヤマハ式</strong>: middle C = <strong>C3</strong><br/><span class="muted">この表記の主なソフト/機器: ${yamahaList}</span></p>
+        <p><strong>国際式(SPN)</strong>: middle C = <strong>C4</strong><br/><span class="muted">この表記の主なソフト/機器: ${spnList}</span></p>
+      `
+    }
+
+    function setNoteNameMode(mode){
+      noteNameMode = (mode==='spn') ? 'spn' : 'yamaha'
+      try{ if(typeof localStorage!=='undefined'){ localStorage.setItem('noteNameMode', noteNameMode) } }catch(_){ }
+      // 再描画（Note名の表示を更新）
+      try{ renderMapping() }catch(_){ }
+      // 自動生成セクションの開始ノート名も更新
+      try{
+        const startInput=$('#midi-gen-start'), startName=$('#midi-gen-start-name')
+        if(startInput && startName){ startName.textContent = midiNoteName(parseInt(startInput.value||'0',10)) }
+      }catch(_){ }
+      // 表示中ならポップオーバーの内容も更新
+      try{ if(__noteNamePopover){ __noteNamePopover.querySelector('.content').innerHTML = getNoteNameHelpHtml() } }catch(_){ }
+    }
+
+    // Note表記のポップオーバー
+    let __noteNamePopover = null
+    let __noteNamePopCloser = null
+    function toggleNoteNameHelp(ev){ if(__noteNamePopover){ closeNoteNameHelp() } else { openNoteNameHelp(ev) } }
+    function openNoteNameHelp(ev){
+      try{ ev && ev.stopPropagation() }catch(_){ }
+      const btn = document.getElementById('note-name-help-btn')
+      if(!btn) return
+      const rect = btn.getBoundingClientRect()
+      const pop = document.createElement('div'); pop.className = 'popover'; pop.id = 'note-name-help-pop'
+      pop.innerHTML = `<div class="content">${getNoteNameHelpHtml()}</div><div class="close-row"><button onclick="closeNoteNameHelp()">閉じる</button></div>`
+      document.body.appendChild(pop)
+      const margin = 8
+      const top = Math.min(rect.bottom + margin, window.innerHeight - pop.offsetHeight - margin)
+      const left = Math.min(Math.max(rect.left, margin), Math.max(margin, window.innerWidth - pop.offsetWidth - margin))
+      pop.style.top = `${Math.max(0, top)}px`
+      pop.style.left = `${Math.max(0, left)}px`
+      __noteNamePopover = pop
+      try{ btn.setAttribute('aria-expanded','true') }catch(_){ }
+      __noteNamePopCloser = (e)=>{
+        try{
+          if(!__noteNamePopover) return
+          if(e && __noteNamePopover.contains(e.target)) return
+          closeNoteNameHelp()
+        }catch(_){ }
+      }
+      document.addEventListener('click', __noteNamePopCloser, true)
+      document.addEventListener('keydown', escCloseNoteNameHelp, true)
+    }
+    function escCloseNoteNameHelp(e){ if(e && e.key==='Escape'){ closeNoteNameHelp() } }
+    function closeNoteNameHelp(){
+      const btn = document.getElementById('note-name-help-btn')
+      try{ if(__noteNamePopover){ __noteNamePopover.remove() } }catch(_){ }
+      __noteNamePopover = null
+      try{ if(btn){ btn.setAttribute('aria-expanded','false') } }catch(_){ }
+      try{ if(__noteNamePopCloser){ document.removeEventListener('click', __noteNamePopCloser, true) } }catch(_){ }
+      try{ document.removeEventListener('keydown', escCloseNoteNameHelp, true) }catch(_){ }
+      __noteNamePopCloser = null
     }
 
     // Local runtime flag (fallback when backend methods are not bound by Wails)
@@ -652,7 +730,12 @@
         box.append(ta); return
       }
       const tbl=el('table',{class:'map'}), thead=el('thead'), hr=el('tr');
-      ;['CH','Note','Scene',''].forEach(h=>hr.append(el('th',{},h))); thead.append(hr); tbl.append(thead)
+      const thCh = el('th',{},'CH')
+      const thNote = el('th',{},'Note')
+      const thScene = el('th',{},'Scene')
+      const thEmpty = el('th',{},'')
+      hr.append(thCh, thNote, thScene, thEmpty)
+      thead.append(hr); tbl.append(thead)
       const tbody=el('tbody')
       mappingRows.forEach((row,idx)=>{
         const tr=el('tr')
@@ -684,6 +767,14 @@
         })
       }
       loadConfig(); loadMidi();
+      // 音階表記モードの初期化
+      try{
+        const sel = document.getElementById('note-name-mode')
+        if(sel){
+          sel.value = (noteNameMode==='spn')?'spn':'yamaha'
+          sel.addEventListener('change', ()=> setNoteNameMode(sel.value))
+        }
+      }catch(_){ }
       const startInput=$('#midi-gen-start'), startName=$('#midi-gen-start-name')
       if(startInput && startName){
         const updateStart=()=>{ startName.textContent=midiNoteName(parseInt(startInput.value||'0',10)) }
@@ -846,7 +937,15 @@
             <button onclick="setMappingMode('table')">表</button>
             <button onclick="setMappingMode('text')">テキスト</button>
             <span class="muted">（保存時はどちらの表示でもOK）</span>
+            <div style="width:12px"></div>
+          <strong>音階表記:</strong>
+            <select id="note-name-mode">
+              <option value="yamaha">ヤマハ式 (C3)</option>
+              <option value="spn">国際式 (C4)</option>
+            </select>
+            <span id="note-name-help-btn" class="help-icon" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-controls="note-name-help-pop" aria-label="音階表記の説明" onclick="toggleNoteNameHelp(event)" onkeydown="if(event.key==='Enter'||event.key===' '){ event.preventDefault(); toggleNoteNameHelp(event) }">?</span>
           </div>
+          
           <div id="mapping-container"></div>
           <div class="row">
             <button onclick="saveMidi()">MIDI設定を保存</button>
