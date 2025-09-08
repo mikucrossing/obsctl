@@ -152,10 +152,13 @@
       const yamahaList = 'YAMAHA, Apple(Logic/GarageBand), Ableton, Bitwig, Studio One, Cubase, Reason, Renoise, Native Instruments, iZotope, Arturia, UVI, Xfer など'
       const spnList = 'KORG, Roland, CASIO, Kawai, Moog, Image-Line(ピアノロール以外), Spectrasonics, FabFilter, MeldaProduction, Celemony, Antares, kiloHearts, Voxengo など'
       return `
-        <h4>音階表記の違いについて</h4>
-        <p>Note名 + オクターブの表記には流派があります。middle C(真ん中のド)の扱いが異なるため、Note名のオクターブ数字が1つずれることがあります。</p>
-        <p><strong>ヤマハ式</strong>: middle C = <strong>C3</strong><br/><span class="muted">この表記の主なソフト/機器: ${yamahaList}</span></p>
-        <p><strong>国際式(SPN)</strong>: middle C = <strong>C4</strong><br/><span class="muted">この表記の主なソフト/機器: ${spnList}</span></p>
+        <h4>音階表記の違いと選び方</h4>
+        <p>DAWソフトによって音階表記が異なります。<strong>ご使用中のソフトに合う方（ヤマハ式(C3) / 国際式(C4)）</strong>を選んでください。</p>
+        <p><strong>・ヤマハ式: middle C = C3</strong><br/><span class="muted">この表記の主なソフト/機器: ${yamahaList}</span></p>
+        <p><strong>・国際式(SPN): middle C = C4</strong><br/><span class="muted">この表記の主なソフト/機器: ${spnList}</span></p>
+        <br>
+        <p class="muted">※Note名のオクターブが1つずれて見える場合は、もう一方に切り替えてください。</p>
+        <p>※Note名 + オクターブの表記には流派があり、<strong>middle C(真ん中のド)</strong>の扱いが異なるため、オクターブ数字が1つずれることがあります。</p>
       `
     }
 
