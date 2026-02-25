@@ -304,15 +304,19 @@ func (t *tinyGoTransport) connectParentPeer(result bluetooth.ScanResult) {
 	}
 
 	var rx, tx bluetooth.DeviceCharacteristic
+	foundRx := false
+	foundTx := false
 	for _, c := range chars {
 		if c.UUID() == syncRXUUID {
 			rx = c
+			foundRx = true
 		}
 		if c.UUID() == syncTXUUID {
 			tx = c
+			foundTx = true
 		}
 	}
-	if rx == (bluetooth.DeviceCharacteristic{}) || tx == (bluetooth.DeviceCharacteristic{}) {
+	if !foundRx || !foundTx {
 		_ = device.Disconnect()
 		return
 	}
