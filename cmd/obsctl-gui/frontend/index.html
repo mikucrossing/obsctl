@@ -218,6 +218,7 @@
 
     // Local runtime flag (fallback when backend methods are not bound by Wails)
     let __midiRunningFlag = false
+    let __btStatusCache = null
 
     async function updateStatusbar(){
       const api = (window.go && window.go.main && window.go.main.App) ? window.go.main.App : null
@@ -262,6 +263,32 @@
       }catch(e){
         const obsEl = document.getElementById('status-obs'); if(obsEl){ obsEl.textContent = 'OBS: 取得失敗' }
       }
+
+      // Bluetooth section (isolated error handling)
+      try{
+        const btEl = document.getElementById('status-bt')
+        if(btEl){
+          if(api && typeof api.BtGetStatus === 'function'){
+            const st = await api.BtGetStatus()
+            __btStatusCache = st
+            if(!st.supported){
+              btEl.textContent = `BT: 未対応${st.unsupported_reason?` (${st.unsupported_reason})`:''}`
+            }else if(!st.running || st.role === 'off'){
+              btEl.textContent = 'BT: Off'
+            }else if(st.role === 'parent'){
+              btEl.textContent = `BT: Parent (${st.connected_peers||0} peers)`
+            }else if(st.role === 'child'){
+              btEl.textContent = `BT: Child (${st.parent_connected ? 'connected' : 'disconnected'})`
+            }else{
+              btEl.textContent = `BT: ${st.role||'unknown'}`
+            }
+          }else{
+            btEl.textContent = 'BT: API未接続'
+          }
+        }
+      }catch(e){
+        const btEl = document.getElementById('status-bt'); if(btEl){ btEl.textContent = 'BT: 取得失敗' }
+      }
     }
 
     let currentConfig = null
@@ -272,8 +299,10 @@
     async function loadConfig(){
       try{
         currentConfig = await window.go.main.App.GetConfig()
+        ensureBluetoothConfig()
         renderConnections()
         renderImportDefaults()
+        renderBluetoothConfig()
       }catch(e){ appendLog('error','設定の読み込みに失敗: '+e) }
     }
 
@@ -349,6 +378,56 @@
       const sel = $('#imp-conn'); sel.innerHTML = ''
       ;(currentConfig.connections||[]).filter(c=>c.enabled!==false).forEach(c=>{ const label=c.name||c.addr; sel.append(el('option', {value:c.name, title: label}, label)) })
       const genSel = $('#midi-gen-conn'); if(genSel){ genSel.innerHTML=''; (currentConfig.connections||[]).filter(c=>c.enabled!==false).forEach(c=>{ const label=c.name||c.addr; genSel.append(el('option',{value:c.name, title: label}, label)) }) }
+    }
+
+    function ensureBluetoothConfig(){
+      if(!currentConfig) currentConfig = {}
+      if(!currentConfig.bluetooth) currentConfig.bluetooth = {}
+      const b = currentConfig.bluetooth
+      if(typeof b.enabled !== 'boolean') b.enabled = false
+      if(!b.role) b.role = 'off'
+      if(!b.device_name) b.device_name = ''
+      if(!(b.lead_time_ms > 0)) b.lead_time_ms = 300
+      if(!(b.pairing_code_ttl_sec > 0)) b.pairing_code_ttl_sec = 60
+      if(!(b.accept_late_ms > 0)) b.accept_late_ms = 500
+      if(!(b.max_nodes > 0)) b.max_nodes = 4
+      if(typeof b.auto_reconnect !== 'boolean') b.auto_reconnect = true
+      if(typeof b.drop_missed_events !== 'boolean') b.drop_missed_events = true
+      if(!Array.isArray(b.trusted_peers)) b.trusted_peers = []
+    }
+
+    function collectBluetoothConfigFromUI(){
+      ensureBluetoothConfig()
+      const b = currentConfig.bluetooth
+      b.enabled = !!$('#bt-enabled').checked
+      b.role = ($('#bt-role').value || 'off').trim()
+      b.device_name = ($('#bt-device-name').value || '').trim()
+      b.lead_time_ms = parseInt($('#bt-lead-time').value || '300', 10)
+      b.pairing_code_ttl_sec = parseInt($('#bt-ttl').value || '60', 10)
+      b.accept_late_ms = parseInt($('#bt-accept-late').value || '500', 10)
+      b.max_nodes = parseInt($('#bt-max-nodes').value || '4', 10)
+      b.auto_reconnect = !!$('#bt-auto-reconnect').checked
+      b.drop_missed_events = !!$('#bt-drop-missed').checked
+      if(!(b.lead_time_ms > 0)) b.lead_time_ms = 300
+      if(!(b.pairing_code_ttl_sec > 0)) b.pairing_code_ttl_sec = 60
+      if(!(b.accept_late_ms > 0)) b.accept_late_ms = 500
+      if(!(b.max_nodes > 0)) b.max_nodes = 4
+      return b
+    }
+
+    function renderBluetoothConfig(){
+      ensureBluetoothConfig()
+      const b = currentConfig.bluetooth
+      $('#bt-enabled').checked = !!b.enabled
+      $('#bt-role').value = b.role || 'off'
+      $('#bt-device-name').value = b.device_name || ''
+      $('#bt-lead-time').value = String(b.lead_time_ms || 300)
+      $('#bt-ttl').value = String(b.pairing_code_ttl_sec || 60)
+      $('#bt-accept-late').value = String(b.accept_late_ms || 500)
+      $('#bt-max-nodes').value = String(b.max_nodes || 4)
+      $('#bt-auto-reconnect').checked = b.auto_reconnect !== false
+      $('#bt-drop-missed').checked = b.drop_missed_events !== false
+      refreshBtStatus()
     }
 
     function addConnection(){
@@ -584,6 +663,7 @@
         transition: $('#imp-transition').value,
         monitoring: $('#imp-monitoring').value,
       }
+      currentConfig.bluetooth = collectBluetoothConfigFromUI()
       try{ await window.go.main.App.SaveConfig(currentConfig); appendLog('info','設定を保存しました') }
       catch(e){ appendLog('error','保存に失敗: '+e) }
       renderImportDefaults()
@@ -632,7 +712,10 @@
       autosaveTimer = setTimeout(doAutoSave, 500)
     }
     async function doAutoSave(){
-      try{ await window.go.main.App.SaveConfig(currentConfig) }catch(e){ /* silent */ }
+      try{
+        if(currentConfig){ currentConfig.bluetooth = collectBluetoothConfigFromUI() }
+        await window.go.main.App.SaveConfig(currentConfig)
+      }catch(e){ /* silent */ }
     }
 
     // MIDI
@@ -679,6 +762,131 @@
 
     async function startMidi(){ try{ await saveMidi(); await window.go.main.App.MidiStart(); __midiRunningFlag = true; try{ updateStatusbar() }catch(_){ } }catch(e){ appendLog('error','MIDI開始に失敗: '+e) } }
     async function stopMidi(){ try{ await window.go.main.App.MidiStop(); __midiRunningFlag = false; try{ updateStatusbar() }catch(_){ } }catch(e){ appendLog('error','MIDI停止に失敗: '+e) } }
+
+    // Bluetooth Sync
+    async function saveBtConfig(){
+      try{
+        const bc = collectBluetoothConfigFromUI()
+        currentConfig.bluetooth = bc
+        await window.go.main.App.BtSaveConfig(bc)
+        appendLog('info','Bluetooth同期設定を保存しました')
+      }catch(e){
+        appendLog('error','Bluetooth同期設定の保存に失敗: '+e)
+      }
+    }
+
+    async function btStart(){
+      try{
+        await saveBtConfig()
+        await window.go.main.App.BtStart()
+        appendLog('info','Bluetooth同期を開始しました')
+        await refreshBtStatus()
+        try{ updateStatusbar() }catch(_){ }
+      }catch(e){
+        appendLog('error','Bluetooth同期の開始に失敗: '+e)
+      }
+    }
+
+    async function btStop(){
+      try{
+        await window.go.main.App.BtStop()
+        appendLog('info','Bluetooth同期を停止しました')
+        await refreshBtStatus()
+        try{ updateStatusbar() }catch(_){ }
+      }catch(e){
+        appendLog('error','Bluetooth同期の停止に失敗: '+e)
+      }
+    }
+
+    async function btGenerateCode(){
+      try{
+        const code = await window.go.main.App.BtGeneratePairingCode()
+        $('#bt-pair-code').value = code || ''
+        appendLog('info','ペアリングコードを発行しました')
+        await refreshBtStatus()
+      }catch(e){
+        appendLog('error','ペアリングコード発行に失敗: '+e)
+      }
+    }
+
+    async function btJoinCode(){
+      const code = ($('#bt-join-code').value || '').trim()
+      if(!code){ appendLog('error','参加コードを入力してください'); return }
+      try{
+        await window.go.main.App.BtJoinByCode(code)
+        appendLog('info','親機へ参加要求を送信しました')
+      }catch(e){
+        appendLog('error','参加要求に失敗: '+e)
+      }
+    }
+
+    function renderBtPeers(st){
+      const box = $('#bt-peers')
+      if(!box) return
+      box.innerHTML = ''
+      const peers = (st && st.peers) ? st.peers : []
+      if(!peers.length){
+        box.append(el('div', {class:'muted'}, '登録済みPeerはありません'))
+        return
+      }
+      peers.forEach(p=>{
+        const line = el('div', {class:'row'}, '')
+        const name = p.name || p.peer_id || '(unknown)'
+        const status = p.connected ? 'connected' : 'disconnected'
+        const txt = `${name} / ${status}${p.last_ack_status?` / ack:${p.last_ack_status}`:''}${Number.isFinite(p.last_latency_ms)?` / ${p.last_latency_ms}ms`:''}`
+        line.append(el('span', {}, txt))
+        box.append(line)
+      })
+    }
+
+    async function refreshBtStatus(){
+      try{
+        const st = await window.go.main.App.BtGetStatus()
+        __btStatusCache = st
+        const roleSel = $('#bt-role')
+        if(roleSel){
+          const childOpt = roleSel.querySelector('option[value=\"child\"]')
+          if(childOpt){
+            childOpt.disabled = !st.supported_role_child
+          }
+        }
+        const statusEl = $('#bt-status')
+        if(statusEl){
+          if(!st.supported){
+            statusEl.textContent = `未対応${st.unsupported_reason?`: ${st.unsupported_reason}`:''}`
+            statusEl.className = 'ng'
+          }else if(!st.running || st.role === 'off'){
+            statusEl.textContent = '停止中'
+            statusEl.className = 'muted'
+          }else if(st.role === 'parent'){
+            statusEl.textContent = `親機として実行中（接続 ${st.connected_peers||0}）`
+            statusEl.className = 'ok'
+          }else if(st.role === 'child'){
+            statusEl.textContent = `子機として実行中（親機 ${st.parent_connected ? '接続済み' : '未接続'}）`
+            statusEl.className = st.parent_connected ? 'ok' : 'muted'
+          }else{
+            statusEl.textContent = `実行中 (${st.role||'unknown'})`
+            statusEl.className = 'ok'
+          }
+          if(st.last_error){
+            statusEl.textContent += ` / ${st.last_error}`
+          }
+        }
+        const codeInfo = $('#bt-code-info')
+        if(codeInfo){
+          if(st.pairing_code_active && st.pairing_code_expires_unix_ms){
+            const sec = Math.max(0, Math.floor((st.pairing_code_expires_unix_ms - Date.now())/1000))
+            codeInfo.textContent = `コード有効期限: ${sec}s`
+          }else{
+            codeInfo.textContent = 'コード未発行'
+          }
+        }
+        renderBtPeers(st)
+      }catch(e){
+        const statusEl = $('#bt-status')
+        if(statusEl){ statusEl.textContent = `状態取得失敗: ${e}`; statusEl.className='ng' }
+      }
+    }
 
     async function generateMidiMappings(){
       try{
@@ -785,9 +993,11 @@
         updateStart()
       }
       setView('connections')
+      try{ refreshBtStatus() }catch(_){ }
       // 初回と定期的にステータス更新
       try{ updateStatusbar() }catch(_){ }
       setInterval(()=>{ try{ updateStatusbar() }catch(_){ } }, 5000)
+      setInterval(()=>{ try{ refreshBtStatus() }catch(_){ } }, 4000)
     })
 
     async function openMidiTest(){
@@ -797,7 +1007,7 @@
 
     // View switching (Settings-like)
     function setView(name){
-      const views = ['scenes','connections','import','midi','logs']
+      const views = ['scenes','connections','import','midi','bluetooth','logs']
       views.forEach(v=>{
         const elv = document.getElementById('view-'+v)
         if(elv){ elv.classList.toggle('hidden', v!==name) }
@@ -812,6 +1022,12 @@
           }
         }catch(_){ /* noop */ }
       }
+      if(name === 'bluetooth'){
+        try{
+          renderBluetoothConfig()
+          refreshBtStatus()
+        }catch(_){ /* noop */ }
+      }
     }
     function labelOf(name){
       switch(name){
@@ -819,6 +1035,7 @@
         case 'connections': return '接続'
         case 'import': return 'シーン 一括作成'
         case 'midi': return 'シーン 自動切替（MIDI）'
+        case 'bluetooth': return 'シーン 同期（Bluetooth）'
         case 'logs': return 'ログ'
         default: return ''
       }
@@ -835,6 +1052,7 @@
         <button class="active" data-view="connections" onclick="setView('connections')">OBSに接続（WebSocket）</button>
         <button data-view="scenes" onclick="setView('scenes')">シーン 手動切替</button>
         <button data-view="midi" onclick="setView('midi')">シーン 自動切替（MIDI）</button>
+        <button data-view="bluetooth" onclick="setView('bluetooth')">シーン 同期（Bluetooth）</button>
         <button data-view="import" onclick="setView('import')">シーン 一括作成</button>
         <button data-view="logs" onclick="setView('logs')">ログ</button>
       </div>
@@ -956,6 +1174,64 @@
         </div>
       </div>
 
+      <div id="view-bluetooth" class="hidden" style="margin-top:16px;">
+        <div class="card">
+          <h3>シーン同期（Bluetooth）</h3>
+          <div class="row">
+            <small class="muted">親機1台から子機へ、時刻指定でシーン切替を同期します</small>
+          </div>
+          <div class="grid2">
+            <div>
+              有効化:
+              <label class="switch"><input id="bt-enabled" type="checkbox" onchange="scheduleAutoSave()" /><span class="slider"></span></label>
+            </div>
+            <div>モード:
+              <select id="bt-role" onchange="scheduleAutoSave()">
+                <option value="off">off</option>
+                <option value="parent">parent</option>
+                <option value="child">child</option>
+              </select>
+            </div>
+            <div>デバイス名: <input id="bt-device-name" placeholder="obsctl-Host" oninput="scheduleAutoSave()" /></div>
+            <div>同期待ち時間(ms): <input id="bt-lead-time" type="number" min="1" value="300" oninput="scheduleAutoSave()" /></div>
+            <div>コードTTL(sec): <input id="bt-ttl" type="number" min="10" value="60" oninput="scheduleAutoSave()" /></div>
+            <div>遅延許容(ms): <input id="bt-accept-late" type="number" min="1" value="500" oninput="scheduleAutoSave()" /></div>
+            <div>最大接続台数: <input id="bt-max-nodes" type="number" min="2" value="4" oninput="scheduleAutoSave()" /></div>
+            <div>切断時イベント破棄:
+              <label class="switch"><input id="bt-drop-missed" type="checkbox" checked onchange="scheduleAutoSave()" /><span class="slider"></span></label>
+            </div>
+            <div>自動再接続:
+              <label class="switch"><input id="bt-auto-reconnect" type="checkbox" checked onchange="scheduleAutoSave()" /><span class="slider"></span></label>
+            </div>
+          </div>
+          <div class="row">
+            <button onclick="saveBtConfig()">Bluetooth設定を保存</button>
+            <button onclick="btStart()">開始</button>
+            <button onclick="btStop()">停止</button>
+            <button onclick="refreshBtStatus()">状態更新</button>
+            <span id="bt-status" class="muted">状態: 取得中…</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>ペアリング</h3>
+          <div class="row">
+            <button onclick="btGenerateCode()">親機コード発行</button>
+            <input id="bt-pair-code" readonly placeholder="親機コード" />
+            <span id="bt-code-info" class="muted">コード未発行</span>
+          </div>
+          <div class="row">
+            <input id="bt-join-code" placeholder="参加コードを入力" />
+            <button onclick="btJoinCode()">コードで参加</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>接続Peer</h3>
+          <div id="bt-peers" class="list"></div>
+        </div>
+      </div>
+
       <div id="view-logs" class="card hidden" style="margin-top:16px;">
         <h3>ログ</h3>
         <div id="log" class="log"></div>
@@ -964,6 +1240,8 @@
   </main>
   <footer id="statusbar" aria-live="polite" role="status">
     <span id="status-midi">MIDI: 取得中…</span>
+    <span style="margin: 0 10px; opacity: .5;">|</span>
+    <span id="status-bt">BT: 取得中…</span>
     <span style="margin: 0 10px; opacity: .5;">|</span>
     <span id="status-obs">OBS: 取得中…</span>
     <span class="spacer"></span>

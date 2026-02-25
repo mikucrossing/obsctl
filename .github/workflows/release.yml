@@ -189,7 +189,7 @@ jobs:
         shell: bash
         run: |
           set -eux
-          wails build --clean -platform darwin/universal -tags midi_native
+          wails build --clean -platform darwin/universal -tags midi_native,bluetooth_native
           cd build/bin
           # Expect the bundle name to be obsctl.app
           if [[ -d "obsctl.app" ]]; then
@@ -209,7 +209,7 @@ jobs:
           # C++/Winpthread を静的リンク（DLL不要化を試行）
           $env:CGO_LDFLAGS = "-static-libstdc++ -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
           $ld = '-s -w -linkmode=external -extldflags "-static-libstdc++ -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"'
-          wails build --clean -platform windows/amd64 -tags midi_native -ldflags $ld
+          wails build --clean -platform windows/amd64 -tags midi_native,bluetooth_native -ldflags $ld
 
           # 生成物と必要DLLを dist に集約
           Copy-Item build\bin\obsctl-gui.exe dist\obsctl-gui_windows_amd64_midi_native.exe -Force

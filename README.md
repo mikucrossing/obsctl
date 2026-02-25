@@ -14,7 +14,7 @@ GUI版（Windows/macOS）は Wails ベースのデスクトップアプリを同
 ```
 go build -o obsctl ./cmd/obsctl
 
-wails dev -tags midi_native
+wails dev -tags midi_native,bluetooth_native
 ```
 
 例:
@@ -37,4 +37,3 @@ wails dev -tags midi_native
 - `version`: バージョン情報を表示
 
 詳細は `docs/README.md` を参照してください。
-
